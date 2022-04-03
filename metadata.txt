@@ -1,0 +1,47 @@
+# This file contains metadata for your plugin.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=DEM2STL
+qgisMinimumVersion=3.0
+description=This plugin lets you generate an STL from a DEM and allows the exclusion of nodata regions.
+version=0.1
+author=Suheyb Aden
+email=suheyb1@gmail.com
+
+about=Plugin for generating a STL file from a DEM. Gives the option of excluding nodata regions from the generated STL
+
+tracker=https://github.com/SuheybAden/DEM2STL-QGIS_Plugin
+repository=https://github.com/SuheybAden/DEM2STL-QGIS_Plugin
+# End of mandatory metadata
+
+# Recommended items:
+
+hasProcessingProvider=no
+# Uncomment the following line and add your changelog:
+# changelog=
+
+# Tags are comma separated with spaces allowed
+tags=STL
+
+homepage=https://github.com/SuheybAden/DEM2STL-QGIS_Plugin
+category=Raster
+icon=icon.png
+# experimental flag
+experimental=False
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
+
+# Since QGIS 3.8, a comma separated list of plugins to be installed
+# (or upgraded) can be specified.
+# Check the documentation for more information.
+# plugin_dependencies=
+
+Category of the plugin: Raster, Vector, Database or Web
+# category=
+
+# If the plugin can run on QGIS Server.
+server=False
+

@@ -50,3 +50,7 @@ compile_commands.json
 
 # QtCreator local machine specific files for imported projects
 *creator.user*
+
+# Instructions from PluginBuilder
+README.txt
+README.html
