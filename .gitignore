@@ -54,3 +54,8 @@ compile_commands.json
 # Instructions from PluginBuilder
 README.txt
 README.html
+
+# Mesh files
+*.obj
+*.ply
+*.stl
