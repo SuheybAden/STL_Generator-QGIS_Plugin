@@ -43,6 +43,13 @@
     </spacer>
    </item>
    <item>
+    <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox">
+     <property name="showCrs">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
       <string>Print Settings</string>
@@ -139,6 +146,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsMapLayerComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qgsmaplayercombobox.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>
