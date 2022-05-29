@@ -27,6 +27,10 @@ class Ui_Dem2StlDialogBase(object):
         self.verticalLayout_3.addWidget(self.groupBox)
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayout_3.addItem(spacerItem)
+        self.mMapLayerComboBox = QgsMapLayerComboBox(Dem2StlDialogBase)
+        self.mMapLayerComboBox.setShowCrs(True)
+        self.mMapLayerComboBox.setObjectName("mMapLayerComboBox")
+        self.verticalLayout_3.addWidget(self.mMapLayerComboBox)
         self.groupBox_2 = QtWidgets.QGroupBox(Dem2StlDialogBase)
         self.groupBox_2.setObjectName("groupBox_2")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.groupBox_2)
@@ -85,3 +89,4 @@ class Ui_Dem2StlDialogBase(object):
         self.label_3.setText(_translate("Dem2StlDialogBase", "Width(mm)"))
         self.label.setText(_translate("Dem2StlDialogBase", "Length(mm)"))
         self.label_4.setText(_translate("Dem2StlDialogBase", "Base Thickness (mm)"))
+from qgsmaplayercombobox import QgsMapLayerComboBox

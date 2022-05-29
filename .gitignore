@@ -59,3 +59,7 @@ README.html
 *.obj
 *.ply
 *.stl
+
+__pycache__
+.mypy_cache
+.vscode
