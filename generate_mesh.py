@@ -1,38 +1,92 @@
+import math
+from qgis.core import (
+    QgsMessageLog,
+    Qgis
+)
+
 import numpy as np
+import open3d as o3d
 from osgeo import gdal, ogr
 import pip._internal as pip
 
+# User input
+noDataValue = 0
+saveLocation = "C:/Code/mesh"
+
+# Printer settings in mm
+bedX = 200
+bedY = 200
+lineWidth = 0.4
+
 verticalExaggeration = .01
-noDataValue = -9999
 bottomLevel = -25.0
 
 
 def dem_to_mesh(source_dem):
-    try:
-        pip.main(['install', 'open3d'])
-        import open3d as o3d
-    except ImportError:
-        print("Couldn't install open3d. Either restart the plugin or install open3d manually through the python console.")
-        return
+    # try:
+    #     pip.main(['install', 'open3d'])
+    #     import open3d as o3d
+    # except ImportError:
+    #     print("Couldn't install open3d. Either restart the plugin or install open3d manually through the python console.")
+    #     return
+    pcd = generatePointCloud(source_dem=source_dem)
+    pcdToMesh(pcd=pcd)
 
+
+def generatePointCloud(source_dem):
     dem = gdal.Open(source_dem, gdal.GA_ReadOnly)
     if not dem:
-        print("Failed to open DEM")
+        # print("Failed to open DEM")
+        # QgsMessageLog.logMessage("Failed to open DEM", level=Qgis.Critical)
         return
 
-    # gt = dem.GetGeoTransform()
-    # radius = 5.8 * max(gt[1], gt[5])
-
     band = dem.GetRasterBand(1)
+    # noDataValue = band.GetNoDataValue()
     array = band.ReadAsArray()
-    print(array.shape)
 
+    # *************************** GET VERTICAL EXAGGERATION OF IMAGE *************************** #
+    # Get min and max height values
+    stats = band.GetStatistics(True, True)
+    minValue = stats[0]
+    maxValue = stats[1]
+
+    # ****************************** GET FINAL RESOLUTION OF IMAGE ***************************** #
+    # Downscales array if the raster image is at a higher resolution than the printer can make
+    imgWidth = array.shape[0]
+    imgHeight = array.shape[1]
+
+    # Gets the maximum resolution of the printer on each axis
+    maxResX = bedX/lineWidth
+    maxResY = bedY/lineWidth
+
+    xScaling = math.floor(imgWidth/maxResX) if imgWidth > maxResX else 0
+    yScaling = math.floor(imgHeight/maxResY) if imgHeight > maxResY else 0
+
+    # Gets the larger of the two scaling factors
+    scalingFactor = max(xScaling, yScaling)
+
+    # # Debugging logs for checking scaling values
+    # QgsMessageLog.logMessage(
+    #     "X stats: " + str(imgWidth) + ", " + str(maxResX) + ", " + str(xScaling), level=Qgis.Info)
+    # QgsMessageLog.logMessage(
+    #     "Y stats: " + str(imgHeight) + ", " + str(maxResY) + ", " + str(yScaling), level=Qgis.Info)
+
+    # Downscales array by scaling factor
+    array = array[::scalingFactor, :: scalingFactor]
+
+    # ***************************** GENERATE POINTCLOUD FROM IMAGE ARRAY ************************ #
     v = []
     n = []
     normal = 1
     x_size = array.shape[0]
     y_size = array.shape[1]
-    print(array[10][10])
+
+    # Debugging logs for checking mismatch in expected nodata value
+    # QgsMessageLog.logMessage(
+    #     str(noDataValue), level=Qgis.Info)
+    # QgsMessageLog.logMessage(
+    #     str(array[0][0]), level=Qgis.Info)
+
     for x in range(x_size):
         for y in range(y_size):
             if array[x][y] != noDataValue:
@@ -41,37 +95,6 @@ def dem_to_mesh(source_dem):
                 point_height = array[x][y] * verticalExaggeration
                 v.append([x, y, point_height])
                 n.append([0, 0, normal])
-
-                # faces = []
-                # # Add face to the left of the current point
-                # if (x > 0 and y < y_size - 1 and array[x-1][y] != noDataValue
-                #         and array[x-1][y+1] != noDataValue):
-                #     face.append([[x, y, array[x, y]],
-                #                  [x-1, y, array[x-1, y]],
-                #                  [x-1, y+1, array[x-1, y+1]]])
-
-                # # Add face to the bottom-left of the current point
-                # if (x > 0 and y < y_size - 1 and array[x][y+1] != noDataValue
-                #         and array[x-1][y+1] != noDataValue):
-                #     face.append([[x, y, array[x, y]],
-                #                  [x, y+1, array[x, y+1]],
-                #                  [x-1, y+1, array[x-1, y+1]]])
-
-                # # Add face to the bottom-right of the current point
-                # if (x < x_size - 1 and y < y_size - 1
-                #     and array[x+1][y+1] != noDataValue
-                #         and array[x][y+1] != noDataValue):
-                #     face.append([[x, y, array[x, y]],
-                #                  [x+1, y+1, array[x+1, y+1]],
-                #                  [x, y+1, array[x, y+1]]])
-
-                # # Add face to the right of the current point
-                # if (x < x_size - 1 and y < y_size - 1
-                #     and array[x+1][y+1] != noDataValue
-                #         and array[x+1][y] != noDataValue):
-                #     face.append([[x, y, array[x, y]],
-                #                  [x+1, y+1, array[x+1, y+1]],
-                #                  [x+1, y, array[x+1, y]]])
 
                 # If this point is an edge, add points going down the side
                 if (isEdgePoint(x, y, array)):
@@ -104,36 +127,50 @@ def dem_to_mesh(source_dem):
     # outlier_cloud = voxel_down_pcd.select_by_index(ind, invert=True)
     # outlier_cloud.paint_uniform_color([1.0, 0.0, 0.0])
 
-    print("Successfully generated point cloud")
+    # print("Successfully generated point cloud")
+    QgsMessageLog.logMessage(
+        "Successfully generated point cloud", level=Qgis.Info)
 
+    # Display pointcloud
+    o3d.visualization.draw_geometries([pcd])
+
+    return pcd
+
+
+def pcdToMesh(pcd):
+    # # Two ways of getting radius for ball pivoting reconstruction
     # distances = pcd.compute_nearest_neighbor_distance()
     # avg_dist = np.mean(distances)
     # radius = 4 * avg_dist
 
-    # # Need normals
-    # bpa_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
-    # 	pcd, o3d.utility.DoubleVector([.15, .5, 1, 1.5, 4, 10]))
+    # gt = dem.GetGeoTransform()
+    # radius = 5.8 * max(gt[1], gt[5])
 
-    # # dec_bpa = bpa_mesh.simplify_quadric_decimation(100000)
-    # # dec_bpa.remove_degenerate_triangles()
-    # # dec_bpa.remove_duplicated_triangles()
-    # # dec_bpa.remove_duplicated_vertices()
-    # # dec_bpa.remove_non_manifold_edges()
+    # Ball Pivoting Algorithm
+    # Need normals
+    bpa_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
+        pcd, o3d.utility.DoubleVector([.15, .5, 1, 1.5, 4, 10]))
 
-    # # poisson_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
-    # #     pcd, depth=12, scale=2)[0]
+    dec_bpa = bpa_mesh.simplify_quadric_decimation(100000)
+    dec_bpa.remove_degenerate_triangles()
+    dec_bpa.remove_duplicated_triangles()
+    dec_bpa.remove_duplicated_vertices()
+    dec_bpa.remove_non_manifold_edges()
 
-    # # bbox = pcd.get_axis_aligned_bounding_box()
-    # # p_mesh_crop = poisson_mesh.crop(bbox)
+    # Poisson Algorithm
+    # poisson_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+    #     pcd, depth=12, scale=2)[0]
 
-    # # dec_poisson = poisson_mesh.simplify_quadric_decimation(100000)
+    # bbox = pcd.get_axis_aligned_bounding_box()
+    # p_mesh_crop = poisson_mesh.crop(bbox)
 
-    # o3d.visualization.draw_geometries([bpa_mesh])
-    # o3d.io.write_triangle_mesh("bpa_mesh.obj", bpa_mesh)
+    # dec_poisson = poisson_mesh.simplify_quadric_decimation(100000)
+
+    o3d.visualization.draw_geometries([dec_bpa])
+    o3d.io.write_triangle_mesh(saveLocation + ".stl", dec_bpa)
+
 
 # Returns whether or not a data point is on the edge of the DEM or not
-
-
 def isEdgePoint(x, y, array):
     isWestSide = x > 0 and array[x-1][y] == noDataValue
     isEastSide = x < array.shape[0] - \
@@ -145,6 +182,15 @@ def isEdgePoint(x, y, array):
 
 # Adds points to the vertices and normals to signify the side of the mesh extrusion
 def addSidePoints(x,  y, v, n, edge_height):
-    for i in range(int(edge_height), int(bottomLevel), -1):
+    for i in range(int(edge_height), int(bottomLevel), -2):
         v.append([x, y, i])
         n.append([1, 0, 0])
+
+
+def main():
+    dem_to_mesh(
+        "C:/Code/Projects/Terrain-Generator/test_files/Africa_resized.tif")
+
+
+if __name__ == "__main__":
+    main()

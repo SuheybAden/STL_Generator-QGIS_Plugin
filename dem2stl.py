@@ -209,10 +209,7 @@ class Dem2Stl:
 					available_rasters.append(layer)
 					self.dlg.selectedLayer_ComboBox.addItem(layer.name())
 
-			if available_rasters and self.window:
-				QMessageBox.information(self.iface.mainWindow(
-				), "DEM2STL", self.tr(str(available_rasters[0].source())))
-			elif not raster:
+			if not available_rasters:
 				QMessageBox.information(self.iface.mainWindow(
 				), "DEM2STL", self.tr("No visible raster layer loaded."))
 				return
