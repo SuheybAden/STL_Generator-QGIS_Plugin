@@ -9,7 +9,11 @@ import open3d as o3d
 from osgeo import gdal, ogr
 import pip._internal as pip
 
-# User input
+# ***************************** USER INPUT *************************** #
+# Height of print excluding the base height (in mm)
+printHeight = 20
+# Height of extruded base (in mm)
+baseHeight = 20
 noDataValue = 0
 saveLocation = "C:/Code/mesh"
 
@@ -18,9 +22,7 @@ bedX = 200
 bedY = 200
 lineWidth = 0.4
 
-verticalExaggeration = .01
-bottomLevel = -25.0
-
+bottomLevel = -100
 
 def dem_to_mesh(source_dem):
     # try:
@@ -30,7 +32,7 @@ def dem_to_mesh(source_dem):
     #     print("Couldn't install open3d. Either restart the plugin or install open3d manually through the python console.")
     #     return
     pcd = generatePointCloud(source_dem=source_dem)
-    pcdToMesh(pcd=pcd)
+    # pcdToMesh(pcd=pcd)
 
 
 def generatePointCloud(source_dem):
@@ -49,6 +51,17 @@ def generatePointCloud(source_dem):
     stats = band.GetStatistics(True, True)
     minValue = stats[0]
     maxValue = stats[1]
+
+    currentHeight = (maxValue-minValue) * lineWidth
+    verticalExaggeration = printHeight / currentHeight
+
+    bottomLevel = minValue - (baseHeight / lineWidth)
+
+    # # Debugging logs for checking scaling values
+    # QgsMessageLog.logMessage(
+    #     "X stats: " + str(imgWidth) + ", " + str(maxResX) + ", " + str(xScaling), level=Qgis.Info)
+    # QgsMessageLog.logMessage(
+    #     "Y stats: " + str(imgHeight) + ", " + str(maxResY) + ", " + str(yScaling), level=Qgis.Info)
 
     # ****************************** GET FINAL RESOLUTION OF IMAGE ***************************** #
     # Downscales array if the raster image is at a higher resolution than the printer can make
@@ -181,6 +194,8 @@ def isEdgePoint(x, y, array):
     return (isWestSide or isEastSide or isNorthSide or isSouthSide)
 
 # Adds points to the vertices and normals to signify the side of the mesh extrusion
+
+
 def addSidePoints(x,  y, v, n, edge_height):
     for i in range(int(edge_height), int(bottomLevel), -2):
         v.append([x, y, i])
