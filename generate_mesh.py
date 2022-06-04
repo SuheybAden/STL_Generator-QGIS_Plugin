@@ -22,7 +22,6 @@ bedX = 200
 bedY = 200
 lineWidth = 0.4
 
-bottomLevel = -100
 
 def dem_to_mesh(source_dem):
     # try:
@@ -32,7 +31,7 @@ def dem_to_mesh(source_dem):
     #     print("Couldn't install open3d. Either restart the plugin or install open3d manually through the python console.")
     #     return
     pcd = generatePointCloud(source_dem=source_dem)
-    # pcdToMesh(pcd=pcd)
+    pcdToMesh(pcd=pcd)
 
 
 def generatePointCloud(source_dem):
@@ -46,7 +45,7 @@ def generatePointCloud(source_dem):
     # noDataValue = band.GetNoDataValue()
     array = band.ReadAsArray()
 
-    # *************************** GET VERTICAL EXAGGERATION OF IMAGE *************************** #
+    # *************************** GET THE VERTICAL EXAGGERATION OF THE MODEL *************************** #
     # Get min and max height values
     stats = band.GetStatistics(True, True)
     minValue = stats[0]
@@ -55,13 +54,14 @@ def generatePointCloud(source_dem):
     currentHeight = (maxValue-minValue) * lineWidth
     verticalExaggeration = printHeight / currentHeight
 
-    bottomLevel = minValue - (baseHeight / lineWidth)
+    # **************************** DEFINE THE BOTTOM LEVEL OF THE MODEL ********************************* #
+    bottomLevel = (minValue * verticalExaggeration) - (baseHeight / lineWidth)
 
-    # # Debugging logs for checking scaling values
-    # QgsMessageLog.logMessage(
-    #     "X stats: " + str(imgWidth) + ", " + str(maxResX) + ", " + str(xScaling), level=Qgis.Info)
-    # QgsMessageLog.logMessage(
-    #     "Y stats: " + str(imgHeight) + ", " + str(maxResY) + ", " + str(yScaling), level=Qgis.Info)
+    # Debugging logs for checking scaling values
+    QgsMessageLog.logMessage(
+        "Vertical Exagerration stats: " + str(maxValue) + ", " + str(minValue) + ", " + str(currentHeight), level=Qgis.Info)
+    QgsMessageLog.logMessage(
+        "Bottom Level stats: " + str(verticalExaggeration) + ", " + str(bottomLevel) + ", " + str(baseHeight), level=Qgis.Info)
 
     # ****************************** GET FINAL RESOLUTION OF IMAGE ***************************** #
     # Downscales array if the raster image is at a higher resolution than the printer can make
@@ -112,7 +112,7 @@ def generatePointCloud(source_dem):
                 # If this point is an edge, add points going down the side
                 if (isEdgePoint(x, y, array)):
                     addSidePoints(
-                        x, y, v, n, edge_height=point_height)
+                        x, y, v, n, edge_height=point_height, bottomLevel=bottomLevel)
 
                 # Add points to make a flat bottom
                 v.append([x, y, bottomLevel])
@@ -196,7 +196,7 @@ def isEdgePoint(x, y, array):
 # Adds points to the vertices and normals to signify the side of the mesh extrusion
 
 
-def addSidePoints(x,  y, v, n, edge_height):
+def addSidePoints(x,  y, v, n, edge_height, bottomLevel):
     for i in range(int(edge_height), int(bottomLevel), -2):
         v.append([x, y, i])
         n.append([1, 0, 0])
