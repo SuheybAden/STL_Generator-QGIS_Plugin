@@ -28,9 +28,9 @@ from matplotlib.style import available
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsMapLayerProxyModel
 
-from .generate_mesh import dem_to_mesh
+from .mesh_generator import MeshGenerator
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -74,6 +74,8 @@ class Dem2Stl:
 		self.first_start = None
 
 		self.window = True
+
+		self.mesh_generator = MeshGenerator()
 
 	# noinspection PyMethodMayBeStatic
 	def tr(self, message):
@@ -202,6 +204,8 @@ class Dem2Stl:
 
 		available_rasters = []
 
+		self.dlg.layers_comboBox.setFilters(QgsMapLayerProxyModel.RasterLayer)
+
 		if layers:
 			for layer in layers:
 				if (layer.type() == layer.RasterLayer and
@@ -224,7 +228,17 @@ class Dem2Stl:
 		result = self.dlg.exec_()
 		# See if OK was pressed
 		if result:
-			# Do something useful here - delete the line containing pass and
-			# substitute with your code.
-			dem_to_mesh(available_rasters[0].source())
+			# Set the parameters for generating the STL file
+			self.mesh_generator.set_parameters(printHeight=float(self.dlg.printHeight_input.text()),
+												baseHeight=float(self.dlg.baseHeight_input.text()),
+												noDataValue=float(self.dlg.noDataValue_input.text()),
+												saveLocation=str(self.dlg.saveLocation_input.text()),
+												bedX=float(self.dlg.bedWidth_input.text()),
+												bedY=float(self.dlg.bedLength_input.text()),
+												lineWidth=float(self.dlg.lineWidth_input.text()))
+			
+			QMessageBox.information(self.iface.mainWindow(),
+									 "DEM2STL", self.tr(self.dlg.layers_comboBox.currentLayer().name()))
+			
+			# self.mesh_generator.dem_to_mesh(self.dlg.layers_comboBox.currentLayer())
 			pass

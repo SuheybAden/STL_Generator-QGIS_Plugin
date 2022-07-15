@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>535</width>
-    <height>361</height>
+    <width>658</width>
+    <height>480</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,20 +30,7 @@
     </widget>
    </item>
    <item>
-    <spacer name="verticalSpacer_3">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item>
-    <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox">
+    <widget class="QgsMapLayerComboBox" name="layers_comboBox">
      <property name="showCrs">
       <bool>true</bool>
      </property>
@@ -52,7 +39,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
-      <string>Print Settings</string>
+      <string>Model Settings</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
@@ -63,43 +50,30 @@
         <property name="fieldGrowthPolicy">
          <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
         </property>
-        <item row="1" column="0">
-         <widget class="QLineEdit" name="lineEdit"/>
-        </item>
-        <item row="1" column="1">
-         <widget class="QLabel" name="label_2">
+        <item row="2" column="1">
+         <widget class="QLabel" name="printHeight_label">
           <property name="text">
            <string>Model Height (mm)</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
-         <widget class="QLineEdit" name="lineEdit_2"/>
-        </item>
-        <item row="2" column="1">
-         <widget class="QLabel" name="label_3">
-          <property name="text">
-           <string>Width(mm)</string>
-          </property>
-         </widget>
-        </item>
         <item row="3" column="0">
-         <widget class="QLineEdit" name="lineEdit_3"/>
+         <widget class="QLineEdit" name="baseHeight_input"/>
         </item>
         <item row="3" column="1">
-         <widget class="QLabel" name="label">
+         <widget class="QLabel" name="base_label">
           <property name="text">
-           <string>Length(mm)</string>
+           <string>Base Thickness (mm)</string>
           </property>
          </widget>
         </item>
         <item row="4" column="0">
-         <widget class="QLineEdit" name="lineEdit_4"/>
+         <widget class="QLineEdit" name="noDataValue_input"/>
         </item>
         <item row="4" column="1">
-         <widget class="QLabel" name="label_4">
+         <widget class="QLabel" name="label_2">
           <property name="text">
-           <string>Base Thickness (mm)</string>
+           <string>No Data Value</string>
           </property>
          </widget>
         </item>
@@ -129,10 +103,102 @@
           </property>
          </spacer>
         </item>
+        <item row="2" column="0">
+         <widget class="QDoubleSpinBox" name="printHeight_input"/>
+        </item>
        </layout>
       </item>
      </layout>
     </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="title">
+      <string>Printer Settings</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_4">
+      <item>
+       <layout class="QFormLayout" name="formLayout_2">
+        <property name="sizeConstraint">
+         <enum>QLayout::SetFixedSize</enum>
+        </property>
+        <property name="fieldGrowthPolicy">
+         <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+        </property>
+        <item row="0" column="0">
+         <spacer name="verticalSpacer_5">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLineEdit" name="bedWidth_input"/>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Bed Width (mm)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLineEdit" name="bedLength_input"/>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="label_7">
+          <property name="text">
+           <string>Bed Length (mm)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLineEdit" name="lineWidth_input"/>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Line Width (mm)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <spacer name="verticalSpacer_4">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QFormLayout" name="formLayout_3">
+     <item row="0" column="0">
+      <widget class="QLineEdit" name="saveLocation_input"/>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Save Location</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="button_box">
