@@ -14,9 +14,9 @@ class MeshGenerator:
 	def __init__(self):
 		pass
 
-	def set_parameters(self, printHeight = 20, baseHeight = 20,
-						noDataValue = 0, saveLocation = "C:/Code/mesh",
-						bedX = 200, bedY = 200, lineWidth = 0.4):
+	def set_parameters(self, printHeight, baseHeight,
+						noDataValue , saveLocation,
+						bedX, bedY, lineWidth):
 		# ***************************** USER INPUT *************************** #
 		# Height of print excluding the base height (in mm)
 		self.printHeight = printHeight
@@ -37,11 +37,14 @@ class MeshGenerator:
 		# except ImportError:
 		#     print("Couldn't install open3d. Either restart the plugin or install open3d manually through the python console.")
 		#     return
-		pcd = self.generatePointCloud(source_dem=source_dem)
+		pcd = self.generate_point_cloud(source_dem=source_dem)
 		# self.pcdToMesh(pcd=pcd)
 
 
-	def generatePointCloud(self, source_dem):
+	def validate_inputs(self):
+		return TRUE
+
+	def generate_point_cloud(self, source_dem):
 		dem = gdal.Open(source_dem, gdal.GA_ReadOnly)
 		if not dem:
 			# print("Failed to open DEM")
@@ -84,7 +87,7 @@ class MeshGenerator:
 		currentHeight = (maxValue-minValue) * self.lineWidth
 		verticalExaggeration = self.printHeight / currentHeight
 
-		self.bottomLevel = minValue - (self.baseHeight / self.lineWidth)
+		self.bottomLevel = (minValue * verticalExaggeration) - (self.baseHeight / self.lineWidth)
 
 		# # Debugging logs for checking scaling values
 		# QgsMessageLog.logMessage(

@@ -211,7 +211,6 @@ class Dem2Stl:
 				if (layer.type() == layer.RasterLayer and
 					QgsProject.instance().layerTreeRoot().findLayer(layer).isVisible()):
 					available_rasters.append(layer)
-					self.dlg.selectedLayer_ComboBox.addItem(layer.name())
 
 			if not available_rasters:
 				QMessageBox.information(self.iface.mainWindow(
@@ -228,17 +227,15 @@ class Dem2Stl:
 		result = self.dlg.exec_()
 		# See if OK was pressed
 		if result:
+			saveLocation = (self.dlg.saveLocation_input.filePath() + "/" + self.dlg.layers_comboBox.currentLayer().name())
+
 			# Set the parameters for generating the STL file
-			self.mesh_generator.set_parameters(printHeight=float(self.dlg.printHeight_input.text()),
-												baseHeight=float(self.dlg.baseHeight_input.text()),
-												noDataValue=float(self.dlg.noDataValue_input.text()),
-												saveLocation=str(self.dlg.saveLocation_input.text()),
-												bedX=float(self.dlg.bedWidth_input.text()),
-												bedY=float(self.dlg.bedLength_input.text()),
-												lineWidth=float(self.dlg.lineWidth_input.text()))
+			self.mesh_generator.set_parameters(printHeight=self.dlg.printHeight_input.value(),
+												baseHeight=self.dlg.baseHeight_input.value(),
+												noDataValue=self.dlg.noDataValue_input.value(),
+												saveLocation= saveLocation,
+												bedX=self.dlg.bedWidth_input.value(),
+												bedY=self.dlg.bedLength_input.value(),
+												lineWidth=self.dlg.lineWidth_input.value())
 			
-			QMessageBox.information(self.iface.mainWindow(),
-									 "DEM2STL", self.tr(self.dlg.layers_comboBox.currentLayer().name()))
-			
-			# self.mesh_generator.dem_to_mesh(self.dlg.layers_comboBox.currentLayer())
-			pass
+			self.mesh_generator.dem_to_mesh(self.dlg.layers_comboBox.currentLayer().source())

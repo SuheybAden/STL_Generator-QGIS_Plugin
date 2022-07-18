@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>658</width>
+    <width>377</width>
     <height>480</height>
    </rect>
   </property>
@@ -24,16 +24,13 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
-       <widget class="QComboBox" name="selectedLayer_ComboBox"/>
+       <widget class="QgsMapLayerComboBox" name="layers_comboBox">
+        <property name="showCrs">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
      </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QgsMapLayerComboBox" name="layers_comboBox">
-     <property name="showCrs">
-      <bool>true</bool>
-     </property>
     </widget>
    </item>
    <item>
@@ -57,18 +54,12 @@
           </property>
          </widget>
         </item>
-        <item row="3" column="0">
-         <widget class="QLineEdit" name="baseHeight_input"/>
-        </item>
         <item row="3" column="1">
          <widget class="QLabel" name="base_label">
           <property name="text">
            <string>Base Thickness (mm)</string>
           </property>
          </widget>
-        </item>
-        <item row="4" column="0">
-         <widget class="QLineEdit" name="noDataValue_input"/>
         </item>
         <item row="4" column="1">
          <widget class="QLabel" name="label_2">
@@ -104,7 +95,28 @@
          </spacer>
         </item>
         <item row="2" column="0">
-         <widget class="QDoubleSpinBox" name="printHeight_input"/>
+         <widget class="QDoubleSpinBox" name="printHeight_input">
+          <property name="value">
+           <double>20.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QDoubleSpinBox" name="baseHeight_input">
+          <property name="value">
+           <double>20.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QDoubleSpinBox" name="noDataValue_input">
+          <property name="minimum">
+           <double>-50000.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>50000.000000000000000</double>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
@@ -138,9 +150,6 @@
           </property>
          </spacer>
         </item>
-        <item row="1" column="0">
-         <widget class="QLineEdit" name="bedWidth_input"/>
-        </item>
         <item row="1" column="1">
          <widget class="QLabel" name="label_6">
           <property name="text">
@@ -148,18 +157,12 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
-         <widget class="QLineEdit" name="bedLength_input"/>
-        </item>
         <item row="2" column="1">
          <widget class="QLabel" name="label_7">
           <property name="text">
            <string>Bed Length (mm)</string>
           </property>
          </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QLineEdit" name="lineWidth_input"/>
         </item>
         <item row="3" column="1">
          <widget class="QLabel" name="label_8">
@@ -181,24 +184,56 @@
           </property>
          </spacer>
         </item>
+        <item row="1" column="0">
+         <widget class="QDoubleSpinBox" name="bedWidth_input">
+          <property name="maximum">
+           <double>10000.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>200.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QDoubleSpinBox" name="bedLength_input">
+          <property name="maximum">
+           <double>10000.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>200.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QDoubleSpinBox" name="lineWidth_input">
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="value">
+           <double>0.400000000000000</double>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
      </layout>
     </widget>
    </item>
    <item>
-    <layout class="QFormLayout" name="formLayout_3">
-     <item row="0" column="0">
-      <widget class="QLineEdit" name="saveLocation_input"/>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>Save Location</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QGroupBox" name="groupBox_4">
+     <property name="title">
+      <string>File Location</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_5">
+      <item>
+       <widget class="QgsFileWidget" name="saveLocation_input">
+        <property name="storageMode">
+         <enum>QgsFileWidget::GetDirectory</enum>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="button_box">
@@ -213,6 +248,11 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>QgsFileWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsfilewidget.h</header>
+  </customwidget>
   <customwidget>
    <class>QgsMapLayerComboBox</class>
    <extends>QComboBox</extends>
