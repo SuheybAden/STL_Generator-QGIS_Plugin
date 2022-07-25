@@ -95,11 +95,9 @@ class MeshGenerator:
         imgWidth, imgHeight = array.shape
         heightDiff = maxValue - minValue
 
-        currentHeight = heightDiff * self.lineWidth
-        self.verticalExaggeration = self.printHeight / currentHeight
-
-        self.bottomLevel = (minValue * self.verticalExaggeration) - \
-            (self.baseHeight / self.lineWidth)
+        self.verticalExaggeration = self.printHeight / heightDiff
+        self.bottomLevel = (
+            minValue * self.verticalExaggeration) - self.baseHeight
 
         np.save("C:/Code/array_data.npy", array)
 
@@ -129,9 +127,10 @@ class MeshGenerator:
                         window[0][1] != self.noDataValue):
 
                     # Add top face
-                    self.write_face([[x, y, window[0][0]/300],
-                                     [x, y + 1, window[0][1]/300],
-                                     [x + 1, y, window[1][0]/300]])
+                    self.write_face([[x, y, window[0][0]*self.verticalExaggeration],
+                                     [x, y + 1, window[0][1] *
+                                         self.verticalExaggeration],
+                                     [x + 1, y, window[1][0]*self.verticalExaggeration]])
                     # Add bottom face
                     self.write_face([[x, y, self.bottomLevel],
                                      [x + 1, y, self.bottomLevel],
@@ -145,9 +144,10 @@ class MeshGenerator:
                         window[1][0] != self.noDataValue and
                         window[0][1] != self.noDataValue):
                     # Add top face
-                    self.write_face([[x + 1, y + 1, window[1][1]/300],
-                                     [x + 1, y, window[1][0]/300],
-                                     [x, y + 1, window[0][1]/300]])
+                    self.write_face([[x + 1, y + 1, window[1][1]*self.verticalExaggeration],
+                                     [x + 1, y, window[1][0] *
+                                         self.verticalExaggeration],
+                                     [x, y + 1, window[0][1]*self.verticalExaggeration]])
                     # Add bottom face
                     self.write_face([[x + 1, y + 1, self.bottomLevel],
                                      [x, y + 1, self.bottomLevel],
@@ -176,12 +176,12 @@ class MeshGenerator:
 
     def add_side_face(self, x1, y1, x2, y2, array):
         if(self.isEdgePoint(x1, y1, array) and self.isEdgePoint(x2, y2, array)):
-            self.write_face([[x1, y1, array[x1][y1]/300],
+            self.write_face([[x1, y1, array[x1][y1]*self.verticalExaggeration],
                              [x1, y1, self.bottomLevel],
-                             [x2, y2, array[x2][y2]/300]])
+                             [x2, y2, array[x2][y2]*self.verticalExaggeration]])
             self.write_face([[x1, y1, self.bottomLevel],
                              [x2, y2, self.bottomLevel],
-                             [x2, y2, array[x2][y2]/300]])
+                             [x2, y2, array[x2][y2]*self.verticalExaggeration]])
 
     def generate_point_cloud(self, array):
         # ***************************** GENERATE POINTCLOUD FROM IMAGE ARRAY ************************ #
