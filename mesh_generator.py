@@ -88,6 +88,9 @@ class MeshGenerator:
         self.bottomLevel = (
             minValue * self.verticalExaggeration) - self.baseHeight
 
+        array = array * self.verticalExaggeration
+        self.noDataValue *= self.verticalExaggeration
+
         # np.save("C:/Code/array_data.npy", array)
 
         # # Debugging logs for checking scaling values
@@ -116,10 +119,9 @@ class MeshGenerator:
                         window[0][1] != self.noDataValue):
 
                     # Add top face
-                    self.write_face([[x, y, window[0][0]*self.verticalExaggeration],
-                                     [x, y + 1, window[0][1] *
-                                         self.verticalExaggeration],
-                                     [x + 1, y, window[1][0]*self.verticalExaggeration]])
+                    self.write_face([[x, y, window[0][0]],
+                                     [x, y + 1, window[0][1]],
+                                     [x + 1, y, window[1][0]]])
                     # Add bottom face
                     self.write_face([[x, y, self.bottomLevel],
                                      [x + 1, y, self.bottomLevel],
@@ -133,10 +135,9 @@ class MeshGenerator:
                         window[1][0] != self.noDataValue and
                         window[0][1] != self.noDataValue):
                     # Add top face
-                    self.write_face([[x + 1, y + 1, window[1][1]*self.verticalExaggeration],
-                                     [x + 1, y, window[1][0] *
-                                         self.verticalExaggeration],
-                                     [x, y + 1, window[0][1]*self.verticalExaggeration]])
+                    self.write_face([[x + 1, y + 1, window[1][1]],
+                                     [x + 1, y, window[1][0]],
+                                     [x, y + 1, window[0][1]]])
                     # Add bottom face
                     self.write_face([[x + 1, y + 1, self.bottomLevel],
                                      [x, y + 1, self.bottomLevel],
@@ -155,36 +156,27 @@ class MeshGenerator:
                 ["\tfacet normal 0.0 0.0 0.0\n", "\t\touter loop\n"])
 
             file.writelines(["\t\t\tvertex {0} {1} {2}\n".format(
-                vertices[0][0], vertices[0][1], vertices[0][2]),
+                vertices[0][0] * self.lineWidth, vertices[0][1] * self.lineWidth, vertices[0][2]),
                 "\t\t\tvertex {0} {1} {2}\n".format(
-                vertices[1][0], vertices[1][1], vertices[1][2]),
+                vertices[1][0] * self.lineWidth, vertices[1][1] * self.lineWidth, vertices[1][2]),
                 "\t\t\tvertex {0} {1} {2}\n".format(
-                vertices[2][0], vertices[2][1], vertices[2][2])])
+                vertices[2][0] * self.lineWidth, vertices[2][1] * self.lineWidth, vertices[2][2])])
 
             file.writelines(["\t\tendloop\n", "\tendfacet\n"])
 
     def add_side_face(self, x1, y1, x2, y2, array):
         if(self.isEdgePoint(x1, y1, array) and self.isEdgePoint(x2, y2, array)):
-            self.write_face([[x1, y1, array[x1][y1]*self.verticalExaggeration],
+            self.write_face([[x1, y1, array[x1][y1]],
                              [x1, y1, self.bottomLevel],
-                             [x2, y2, array[x2][y2]*self.verticalExaggeration]])
+                             [x2, y2, array[x2][y2]]])
             self.write_face([[x1, y1, self.bottomLevel],
                              [x2, y2, self.bottomLevel],
-                             [x2, y2, array[x2][y2]*self.verticalExaggeration]])
+                             [x2, y2, array[x2][y2]]])
 
-    # Returns whether or not a data point is on the edge of the DEM or not
-
+    # Returns whether or not a data point will be on the edge of the model
     def isEdgePoint(self, x, y, array):
         window = array[x-1:x+2, y-1:y+2]
-
         return window.size == 0 or self.noDataValue in window
-
-    # Adds points to the vertices and normals to signify the side of the mesh extrusion
-
-    def addSidePoints(self, x,  y, v, n, edge_height):
-        for i in range(int(edge_height), int(self.bottomLevel), -2):
-            v.append([x, y, i])
-            n.append([1, 0, 0])
 
 
 def main():
