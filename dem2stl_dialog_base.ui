@@ -97,7 +97,7 @@
         <item row="2" column="0">
          <widget class="QDoubleSpinBox" name="printHeight_input">
           <property name="value">
-           <double>20.000000000000000</double>
+           <double>10.000000000000000</double>
           </property>
          </widget>
         </item>
