@@ -49,7 +49,7 @@ class MeshGenerator:
             return
 
         band = dem.GetRasterBand(1)
-        # noDataValue = band.GetNoDataValue()
+        # self.noDataValue = band.GetNoDataValue()
         array = band.ReadAsArray()
 
         # ****************************** GET FINAL RESOLUTION OF IMAGE ***************************** #
@@ -176,29 +176,30 @@ class MeshGenerator:
     # Returns whether or not a data point will be on the edge of the model
     def isEdgePoint(self, x, y, array):
         window = array[x-1:x+2, y-1:y+2]
-        return window.size == 0 or self.noDataValue in window
+        # print(window)
+        return window.size != 0 or -9999 in window
 
 
 def main():
     mesh_generator = MeshGenerator()
-    mesh_generator.set_parameters(printHeight=20,
-                                  baseHeight=20,
-                                  noDataValue=-9999,
-                                  saveLocation="C:/Code/test",
-                                  bedX=200,
-                                  bedY=200,
-                                  lineWidth=0.4)
-    data = np.load("C:/Code/array_data.npy")
+    # mesh_generator.set_parameters(printHeight=20,
+    #                               baseHeight=20,
+    #                               noDataValue=-9999,
+    #                               saveLocation="C:/Code/test",
+    #                               bedX=200,
+    #                               bedY=200,
+    #                               lineWidth=0.4)
+    # data = np.load("C:/Code/array_data.npy")
     test_array = np.array([[1, 2, 7, 21312, 590],
-                           [3, 5, 9, 21093, -45],
-                           [421, 214, -9999, 2913, 493],
+                           [3, -9999, 9, 21093, -45],
+                           [421, 214, 156, 2913, 493],
                            [2891, 3902, 219, 4891, 214],
                            [324, 8421, 58, 32, 89412]])
-    # x = 1
-    # y = 0
-    # print(test_array[x][y])
-    # print(mesh_generator.isEdgePoint(x, y, test_array))
-    mesh_generator.manually_generate_stl(data)
+    x = 2
+    y = 2
+    print(test_array[x][y])
+    print(mesh_generator.isEdgePoint(x, y, test_array))
+    # mesh_generator.manually_generate_stl(data)
 
 
 if __name__ == "__main__":

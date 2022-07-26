@@ -30,8 +30,6 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from qgis.core import QgsProject, QgsMapLayerProxyModel
 
-from .mesh_generator import MeshGenerator
-
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
@@ -74,8 +72,6 @@ class Dem2Stl:
         self.first_start = None
 
         self.window = True
-
-        self.mesh_generator = MeshGenerator()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -197,12 +193,11 @@ class Dem2Stl:
             self.dlg = Dem2StlDialog()
 
         layers = self.iface.mapCanvas().layers()
-        raster = False
 
         # QMessageBox.information(self.iface.mainWindow(),
         # 		"DEM2STL", self.tr(str(layers)))
 
-        available_rasters = []
+        available_raster = False
 
         self.dlg.layers_comboBox.setFilters(QgsMapLayerProxyModel.RasterLayer)
 
@@ -210,9 +205,9 @@ class Dem2Stl:
             for layer in layers:
                 if (layer.type() == layer.RasterLayer and
                         QgsProject.instance().layerTreeRoot().findLayer(layer).isVisible()):
-                    available_rasters.append(layer)
+                    available_raster = True
 
-            if not available_rasters:
+            if not available_raster:
                 QMessageBox.information(self.iface.mainWindow(
                 ), "DEM2STL", self.tr("No visible raster layer loaded."))
                 return
@@ -225,19 +220,7 @@ class Dem2Stl:
         self.dlg.show()
         # Run the dialog event loop
         result = self.dlg.exec_()
+
         # See if OK was pressed
         if result:
-            saveLocation = (self.dlg.saveLocation_input.filePath(
-            ) + "\\" + self.dlg.layers_comboBox.currentLayer().name())
-
-            # Set the parameters for generating the STL file
-            self.mesh_generator.set_parameters(printHeight=self.dlg.printHeight_input.value(),
-                                               baseHeight=self.dlg.baseHeight_input.value(),
-                                               noDataValue=self.dlg.noDataValue_input.value(),
-                                               saveLocation=saveLocation,
-                                               bedX=self.dlg.bedWidth_input.value(),
-                                               bedY=self.dlg.bedLength_input.value(),
-                                               lineWidth=self.dlg.lineWidth_input.value())
-
-            self.mesh_generator.dem_to_mesh(
-                self.dlg.layers_comboBox.currentLayer().source())
+            self.dlg.stop_thread()
