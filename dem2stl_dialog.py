@@ -53,12 +53,18 @@ class Dem2StlDialog(QtWidgets.QDialog, FORM_CLASS):
 
         self.running = False
 
-    def connect_UI(self):
+    def connect_signals(self):
+        # UI related signals
         self.generateSTL_button.clicked.connect(
             self.begin_generating_STL)
+        self.abort_button.clicked.connect(self.worker.abort_process)
+        self.exit_button.clicked.connect(self.close_window)
+
+        # Background process signals
         self.worker.progress_changed.connect(self.progress.setValue)
         self.worker.progress_text.connect(self.progress.setFormat)
-        self.worker.finished.connect(self.stop_thread)
+        self.worker.finished.connect(self.finished_generating_STL)
+
         self.start_signal.connect(self.worker.generate_STL)
         self.send_parameters.connect(self.worker.mesh_generator.set_parameters)
         self.selected_layer.connect(self.worker.set_current_layer)
@@ -69,7 +75,7 @@ class Dem2StlDialog(QtWidgets.QDialog, FORM_CLASS):
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
 
-        self.connect_UI()
+        self.connect_signals()
 
     def begin_generating_STL(self):
 
@@ -93,12 +99,19 @@ class Dem2StlDialog(QtWidgets.QDialog, FORM_CLASS):
             self.running = True
             self.start_signal.emit()
 
+    def finished_generating_STL(self):
+        self.running = False
+
     def stop_thread(self):
+        self.finished_generating_STL()
+
         if self.worker_thread.isRunning():
             self.worker_thread.terminate()
             self.worker_thread.wait()
 
-        self.running = False
+    def close_window(self):
+        self.stop_thread()
+        self.close()
 
 
 class WorkerObject(QtCore.QObject):
@@ -132,7 +145,13 @@ class WorkerObject(QtCore.QObject):
             self.progress_changed.emit(100.0)
             self.progress_text.emit("%p% Finished Generating STL File!")
         except:
-            # self.progress_text.emit("Failed to Generate STL.")
+            self.progress_text.emit("Failed to Generate STL.")
             pass
 
         self.finished.emit()
+
+    @QtCore.pyqtSlot()
+    def abort_process(self):
+        self.progress_changed.emit(0.0)
+        self.progress_text.emit("Aborted!")
+        self.mesh_generator.abort = True

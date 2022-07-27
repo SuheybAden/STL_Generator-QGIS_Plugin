@@ -224,4 +224,4 @@ class Dem2Stl:
 
         # See if OK was pressed
         if result:
-            self.dlg.stop_thread()
+            pass

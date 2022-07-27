@@ -19,6 +19,8 @@ class EdgePoint(Enum):
 
 class MeshGenerator:
     def __init__(self):
+        self.abort = False
+
         self.verticalExaggeration = .1
         self.bottomLevel = 20
 
@@ -107,44 +109,48 @@ class MeshGenerator:
         size_x, size_y = array.shape
         for x in range(size_x - 1):
             for y in range(size_y - 1):
-                # Get a 2x2 window
-                window = array[x:x+2, y:y+2]
+                if(not self.abort):
+                    # Get a 2x2 window
+                    window = array[x:x+2, y:y+2]
 
-                orientation = np.packbits(
-                    (window != self.noDataValue).flatten())
+                    orientation = np.packbits(
+                        (window != self.noDataValue).flatten())
 
-                if (window[0][0] != self.noDataValue and
-                        window[1][0] != self.noDataValue and
-                        window[0][1] != self.noDataValue):
+                    if (window[0][0] != self.noDataValue and
+                            window[1][0] != self.noDataValue and
+                            window[0][1] != self.noDataValue):
 
-                    # Add top face
-                    self.write_face([[x, y, window[0][0]],
-                                     [x, y + 1, window[0][1]],
-                                     [x + 1, y, window[1][0]]])
-                    # Add bottom face
-                    self.write_face([[x, y, self.bottomLevel],
-                                     [x + 1, y, self.bottomLevel],
-                                     [x, y + 1, self.bottomLevel]])
-                    # Add side faces
-                    self.add_side_face(x, y, x + 1, y, array)
-                    self.add_side_face(x, y, x, y + 1, array)
-                    self.add_side_face(x + 1, y, x, y + 1, array)
+                        # Add top face
+                        self.write_face([[x, y, window[0][0]],
+                                         [x, y + 1, window[0][1]],
+                                         [x + 1, y, window[1][0]]])
+                        # Add bottom face
+                        self.write_face([[x, y, self.bottomLevel],
+                                         [x + 1, y, self.bottomLevel],
+                                         [x, y + 1, self.bottomLevel]])
+                        # Add side faces
+                        self.add_side_face(x, y, x + 1, y, array)
+                        self.add_side_face(x, y, x, y + 1, array)
+                        self.add_side_face(x + 1, y, x, y + 1, array)
 
-                if (window[1][1] != self.noDataValue and
-                        window[1][0] != self.noDataValue and
-                        window[0][1] != self.noDataValue):
-                    # Add top face
-                    self.write_face([[x + 1, y + 1, window[1][1]],
-                                     [x + 1, y, window[1][0]],
-                                     [x, y + 1, window[0][1]]])
-                    # Add bottom face
-                    self.write_face([[x + 1, y + 1, self.bottomLevel],
-                                     [x, y + 1, self.bottomLevel],
-                                     [x + 1, y, self.bottomLevel]])
-                    # Add side faces
-                    self.add_side_face(x + 1, y + 1, x + 1, y, array)
-                    self.add_side_face(x + 1, y + 1, x, y + 1, array)
-                    self.add_side_face(x + 1, y, x, y + 1, array)
+                    if (window[1][1] != self.noDataValue and
+                            window[1][0] != self.noDataValue and
+                            window[0][1] != self.noDataValue):
+                        # Add top face
+                        self.write_face([[x + 1, y + 1, window[1][1]],
+                                         [x + 1, y, window[1][0]],
+                                         [x, y + 1, window[0][1]]])
+                        # Add bottom face
+                        self.write_face([[x + 1, y + 1, self.bottomLevel],
+                                         [x, y + 1, self.bottomLevel],
+                                         [x + 1, y, self.bottomLevel]])
+                        # Add side faces
+                        self.add_side_face(x + 1, y + 1, x + 1, y, array)
+                        self.add_side_face(x + 1, y + 1, x, y + 1, array)
+                        self.add_side_face(x + 1, y, x, y + 1, array)
+                else:
+                    self.abort = False
+                    return
 
         with open(self.saveLocation + ".stl", "a") as file:
             file.write("endsolid\n")
