@@ -22,6 +22,7 @@
  ***************************************************************************/
 """
 
+from email import message
 import os
 from threading import Thread
 from .mesh_generator import MeshGenerator
@@ -36,6 +37,8 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 
 class Dem2StlDialog(QtWidgets.QDialog, FORM_CLASS):
     start_signal = QtCore.pyqtSignal()
+    send_parameters = QtCore.pyqtSignal(object)
+    selected_layer = QtCore.pyqtSignal(str)
 
     def __init__(self, parent=None):
         """Constructor."""
@@ -55,8 +58,10 @@ class Dem2StlDialog(QtWidgets.QDialog, FORM_CLASS):
             self.begin_generating_STL)
         self.worker.progress_changed.connect(self.progress.setValue)
         self.worker.progress_text.connect(self.progress.setFormat)
-        self.worker.finished.connect(self.finished_generating_STL)
+        self.worker.finished.connect(self.stop_thread)
         self.start_signal.connect(self.worker.generate_STL)
+        self.send_parameters.connect(self.worker.mesh_generator.set_parameters)
+        self.selected_layer.connect(self.worker.set_current_layer)
 
     def start_thread(self):
         self.worker = WorkerObject()
@@ -67,33 +72,33 @@ class Dem2StlDialog(QtWidgets.QDialog, FORM_CLASS):
         self.connect_UI()
 
     def begin_generating_STL(self):
-        self.progress.setValue(0.0)
-        self.progress.setFormat("%p% Beginning to Generate STL...")
-
-        # Set the parameters for generating the STL file
-        self.worker.mesh_generator.set_parameters(printHeight=self.printHeight_input.value(),
-                                                  baseHeight=self.baseHeight_input.value(),
-                                                  noDataValue=self.noDataValue_input.value(),
-                                                  saveLocation=(self.saveLocation_input.filePath(
-                                                  ) + "\\" + self.layers_comboBox.currentLayer().name()),
-                                                  bedX=self.bedWidth_input.value(),
-                                                  bedY=self.bedLength_input.value(),
-                                                  lineWidth=self.lineWidth_input.value())
-
-        self.worker.current_layer = self.layers_comboBox.currentLayer().source()
 
         if not self.running:
+            self.progress.setValue(0.0)
+            self.progress.setFormat("%p% Beginning to Generate STL...")
+
+            # Set the parameters for generating the STL file
+            self.send_parameters.emit({"printHeight": self.printHeight_input.value(),
+                                       "baseHeight": self.baseHeight_input.value(),
+                                       "noDataValue": self.noDataValue_input.value(),
+                                       "saveLocation": (self.saveLocation_input.filePath(
+                                       ) + "\\" + self.layers_comboBox.currentLayer().name()),
+                                       "bedX": self.bedWidth_input.value(),
+                                       "bedY": self.bedLength_input.value(),
+                                       "lineWidth": self.lineWidth_input.value()})
+
+            self.selected_layer.emit(
+                self.layers_comboBox.currentLayer().source())
+
             self.running = True
             self.start_signal.emit()
-
-    def finished_generating_STL(self):
-        self.running = False
 
     def stop_thread(self):
         if self.worker_thread.isRunning():
             self.worker_thread.terminate()
             self.worker_thread.wait()
-        self.finished_generating_STL()
+
+        self.running = False
 
 
 class WorkerObject(QtCore.QObject):
@@ -105,6 +110,11 @@ class WorkerObject(QtCore.QObject):
         super().__init__()
         self.mesh_generator = MeshGenerator()
         self.running = False
+        self.current_layer = ""
+
+    @QtCore.pyqtSlot(str)
+    def set_current_layer(self, path):
+        self.current_layer = path
 
     # Generates STL file on button press
     @QtCore.pyqtSlot()
@@ -122,6 +132,7 @@ class WorkerObject(QtCore.QObject):
             self.progress_changed.emit(100.0)
             self.progress_text.emit("%p% Finished Generating STL File!")
         except:
-            self.progress_text.emit("Failed to Generate STL.")
+            # self.progress_text.emit("Failed to Generate STL.")
+            pass
 
         self.finished.emit()

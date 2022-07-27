@@ -199,7 +199,8 @@ class Dem2Stl:
 
         available_raster = False
 
-        self.dlg.layers_comboBox.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layers_comboBox.setFilters(
+            QgsMapLayerProxyModel.RasterLayer)
 
         if layers:
             for layer in layers:
@@ -223,5 +224,4 @@ class Dem2Stl:
 
         # See if OK was pressed
         if result:
-            # self.dlg.stop_thread()
-            pass
+            self.dlg.stop_thread()

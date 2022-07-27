@@ -22,21 +22,19 @@ class MeshGenerator:
         self.verticalExaggeration = .1
         self.bottomLevel = 20
 
-    def set_parameters(self, printHeight, baseHeight,
-                       noDataValue, saveLocation,
-                       bedX, bedY, lineWidth):
+    def set_parameters(self, parameters):
         # ***************************** USER INPUT *************************** #
         # Height of print excluding the base height (in mm)
-        self.printHeight = printHeight
+        self.printHeight = parameters["printHeight"]
         # Height of extruded base (in mm)
-        self.baseHeight = baseHeight
-        self.noDataValue = noDataValue
-        self.saveLocation = saveLocation
+        self.baseHeight = parameters["baseHeight"]
+        self.noDataValue = parameters["noDataValue"]
+        self.saveLocation = parameters["saveLocation"]
 
         # Printer settings in mm
-        self.bedX = bedX
-        self.bedY = bedY
-        self.lineWidth = lineWidth
+        self.bedX = parameters["bedX"]
+        self.bedY = parameters["bedY"]
+        self.lineWidth = parameters["lineWidth"]
 
     def dem_to_mesh(self, source_dem):
         input_array = self.generate_height_array(source_dem=source_dem)
@@ -180,7 +178,7 @@ class MeshGenerator:
         # print("(" + str(x) + ", " + str(y) + ")")
         # print(window.shape)
         # print("\n")
-        return window.shape != (3, 3) or -9999 in window
+        return (window.shape != (3, 3)) or (-9999 in window)
 
 
 def main():
@@ -203,7 +201,7 @@ def main():
     # y = 2
     # print(test_array[x][y])
     # print(mesh_generator.isEdgePoint(x, y, test_array))
-    mesh_generator.manually_generate_stl(data)
+    # mesh_generator.manually_generate_stl(data)
 
 
 if __name__ == "__main__":
