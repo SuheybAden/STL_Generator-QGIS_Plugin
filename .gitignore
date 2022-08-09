@@ -60,6 +60,7 @@ README.html
 *.ply
 *.stl
 
-__pycache__
-.mypy_cache
-.vscode
+__pycache__/
+.mypy_cache/
+.vscode/
+pylintrc
