@@ -1,6 +1,0 @@
-{
-	"qtForPython.designer.path": "c:\\Qt\\5.14.2\\mingw73_64\\bin\\designer.exe",
-	"python.linting.pylintEnabled": false,
-	"python.linting.mypyEnabled": true,
-	"python.linting.enabled": true
-}
