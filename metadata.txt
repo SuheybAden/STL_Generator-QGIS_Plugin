@@ -12,7 +12,7 @@ email=suheyb1@gmail.com
 
 about=Plugin for generating a STL file from a DEM. Gives the option of excluding nodata regions from the generated STL
 
-tracker=https://github.com/SuheybAden/STL_Generator-QGIS_Plugin
+tracker=https://github.com/SuheybAden/STL_Generator-QGIS_Plugin/issues
 repository=https://github.com/SuheybAden/STL_Generator-QGIS_Plugin
 # End of mandatory metadata
 
@@ -25,7 +25,7 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=STL
 
-homepage=https://github.com/SuheybAden/STL_Generator-QGIS_Plugin
+homepage=https://suheybaden.github.io/STL_Generator-QGIS_Plugin/
 category=Raster
 icon=icon.png
 # experimental flag
