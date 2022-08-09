@@ -1,12 +1,13 @@
 from enum import Enum
 import math
-# from qgis.core import (
-#     QgsMessageLog,
-#     Qgis
-# )
+from qgis.core import (
+    QgsMessageLog,
+    Qgis
+)
 
 import numpy as np
 from osgeo import gdal, ogr
+import time
 
 
 class EdgePoint(Enum):
@@ -22,7 +23,7 @@ class MeshGenerator:
         self.abort = False
 
         self.verticalExaggeration = .1
-        self.bottomLevel = 20
+        self.bottomLevel = -100
 
     def set_parameters(self, parameters):
         # ***************************** USER INPUT *************************** #
@@ -38,19 +39,21 @@ class MeshGenerator:
         self.bedY = parameters["bedY"]
         self.lineWidth = parameters["lineWidth"]
 
-    def dem_to_mesh(self, source_dem):
-        input_array = self.generate_height_array(source_dem=source_dem)
-        self.manually_generate_stl(input_array)
-
     def generate_height_array(self, source_dem):
+        start_time = time.time()
+
         dem = gdal.Open(source_dem, gdal.GA_ReadOnly)
+
         if not dem:
-            # print("Failed to open DEM")
-            # QgsMessageLog.logMessage("Failed to open DEM", level=Qgis.Critical)
+            QgsMessageLog.logMessage("Failed to open DEM", level=Qgis.Critical)
             return
 
+        QgsMessageLog.logMessage("Opened DEM", level=Qgis.Info)
+
         band = dem.GetRasterBand(1)
-        # self.noDataValue = band.GetNoDataValue()
+        self.noDataValue = band.GetNoDataValue()
+        QgsMessageLog.logMessage(
+            "No data value is: " + str(band.GetNoDataValue()), level=Qgis.Info)
         array = band.ReadAsArray()
 
         # ****************************** GET FINAL RESOLUTION OF IMAGE ***************************** #
@@ -74,6 +77,7 @@ class MeshGenerator:
         #     "Y stats: " + str(imgHeight) + ", " + str(maxResY) + ", " + str(yScaling), level=Qgis.Info)
 
         # Downscales array by scaling factor
+        # array.resize((imgWidth/scalingFactor, imgHeight/scalingFactor))
         array = array[::scalingFactor, :: scalingFactor]
 
         # *************************** GET VERTICAL EXAGGERATION OF IMAGE *************************** #
@@ -94,11 +98,15 @@ class MeshGenerator:
 
         # np.save("C:/Code/array_data.npy", array)
 
-        # # Debugging logs for checking scaling values
+        # Debugging logs for checking scaling values
         # QgsMessageLog.logMessage(
         #     "X stats: " + str(imgWidth) + ", " + str(maxResX) + ", " + str(xScaling), level=Qgis.Info)
         # QgsMessageLog.logMessage(
         #     "Y stats: " + str(imgHeight) + ", " + str(maxResY) + ", " + str(yScaling), level=Qgis.Info)
+
+        QgsMessageLog.logMessage(
+            "Time to generate height array: " + str(time.time() - start_time), level=Qgis.Info)
+
         return array
 
     # Function for manually generating STL without the Open3D library
@@ -184,30 +192,30 @@ class MeshGenerator:
         # print("(" + str(x) + ", " + str(y) + ")")
         # print(window.shape)
         # print("\n")
-        return (window.shape != (3, 3)) or (-9999 in window)
+        return window.size != 0 or window.shape != (3, 3) or (-9999 in window)
 
 
 def main():
     mesh_generator = MeshGenerator()
-    mesh_generator.set_parameters(printHeight=20,
-                                  baseHeight=20,
-                                  noDataValue=-9999,
-                                  saveLocation="C:/Code/test",
-                                  bedX=200,
-                                  bedY=200,
-                                  lineWidth=0.4)
-    data = np.load("C:/Code/array_data.npy")
-    print(data.shape)
-    # test_array = np.array([[1, 2, 7, 21312, 590],
-    #                        [3, -9999, 9, 21093, -45],
-    #                        [421, 214, 156, 2913, 493],
-    #                        [2891, 3902, 219, 4891, 214],
-    #                        [324, 8421, 58, 32, 89412]])
+    mesh_generator.set_parameters({"printHeight": 20,
+                                   "baseHeight": 20,
+                                   "noDataValue": -9999,
+                                   "saveLocation": "C:/Code/test",
+                                   "bedX": 200,
+                                   "bedY": 200,
+                                   "lineWidth": 0.4})
+    # data = np.load("C:/Code/array_data.npy")
+    # print(data.shape)
+    test_array = np.array([[1, 2, 7, 21312, 590],
+                           [3, -9999, 9, 21093, -45],
+                           [421, 214, 156, 2913, 493],
+                           [2891, 3902, 219, 4891, 214],
+                           [324, 8421, 58, 32, 89412]])
     # x = 2
     # y = 2
     # print(test_array[x][y])
     # print(mesh_generator.isEdgePoint(x, y, test_array))
-    # mesh_generator.manually_generate_stl(data)
+    mesh_generator.manually_generate_stl(test_array)
 
 
 if __name__ == "__main__":
