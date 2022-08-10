@@ -31,7 +31,6 @@ class MeshGenerator:
         self.printHeight = parameters["printHeight"]
         # Height of extruded base (in mm)
         self.baseHeight = parameters["baseHeight"]
-        self.noDataValue = parameters["noDataValue"]
         self.saveLocation = parameters["saveLocation"]
 
         # Printer settings in mm
@@ -70,14 +69,7 @@ class MeshGenerator:
         # Gets the larger of the two scaling factors
         scalingFactor = max(xScaling, yScaling)
 
-        # # Debugging logs for checking scaling values
-        # QgsMessageLog.logMessage(
-        #     "X stats: " + str(imgWidth) + ", " + str(maxResX) + ", " + str(xScaling), level=Qgis.Info)
-        # QgsMessageLog.logMessage(
-        #     "Y stats: " + str(imgHeight) + ", " + str(maxResY) + ", " + str(yScaling), level=Qgis.Info)
-
         # Downscales array by scaling factor
-        # array.resize((imgWidth/scalingFactor, imgHeight/scalingFactor))
         array = array[::scalingFactor, :: scalingFactor]
 
         # *************************** GET VERTICAL EXAGGERATION OF IMAGE *************************** #
@@ -95,14 +87,6 @@ class MeshGenerator:
 
         array = array * self.verticalExaggeration
         self.noDataValue *= self.verticalExaggeration
-
-        # np.save("C:/Code/array_data.npy", array)
-
-        # Debugging logs for checking scaling values
-        # QgsMessageLog.logMessage(
-        #     "X stats: " + str(imgWidth) + ", " + str(maxResX) + ", " + str(xScaling), level=Qgis.Info)
-        # QgsMessageLog.logMessage(
-        #     "Y stats: " + str(imgHeight) + ", " + str(maxResY) + ", " + str(yScaling), level=Qgis.Info)
 
         QgsMessageLog.logMessage(
             "Time to generate height array: " + str(time.time() - start_time), level=Qgis.Info)
@@ -189,9 +173,6 @@ class MeshGenerator:
     # Returns whether or not a data point will be on the edge of the model
     def isEdgePoint(self, x, y, array):
         window = array[x-1:x+2, y-1:y+2]
-        # print("(" + str(x) + ", " + str(y) + ")")
-        # print(window.shape)
-        # print("\n")
         return window.size != 0 or window.shape != (3, 3) or (-9999 in window)
 
 
@@ -199,7 +180,6 @@ def main():
     mesh_generator = MeshGenerator()
     mesh_generator.set_parameters({"printHeight": 20,
                                    "baseHeight": 20,
-                                   "noDataValue": -9999,
                                    "saveLocation": "C:/Code/test",
                                    "bedX": 200,
                                    "bedY": 200,
