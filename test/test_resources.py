@@ -17,8 +17,7 @@ import unittest
 from qgis.PyQt.QtGui import QIcon
 
 
-
-class Dem2StlDialogTest(unittest.TestCase):
+class STLGeneratorDialogTest(unittest.TestCase):
     """Test rerources work."""
 
     def setUp(self):
@@ -31,14 +30,12 @@ class Dem2StlDialogTest(unittest.TestCase):
 
     def test_icon_png(self):
         """Test we can click OK."""
-        path = ':/plugins/Dem2Stl/icon.png'
+        path = ':/plugins/STLGenerator/icon.png'
         icon = QIcon(path)
         self.assertFalse(icon.isNull())
 
+
 if __name__ == "__main__":
-    suite = unittest.makeSuite(Dem2StlResourcesTest)
+    suite = unittest.makeSuite(STLGeneratorResourcesTest)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
-
-
-

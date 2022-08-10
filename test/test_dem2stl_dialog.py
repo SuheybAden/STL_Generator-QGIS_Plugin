@@ -16,18 +16,18 @@ import unittest
 
 from qgis.PyQt.QtGui import QDialogButtonBox, QDialog
 
-from dem2stl_dialog import Dem2StlDialog
+from stl_generator_dialog import STLGeneratorDialog
 
 from utilities import get_qgis_app
 QGIS_APP = get_qgis_app()
 
 
-class Dem2StlDialogTest(unittest.TestCase):
+class STLGeneratorDialogTest(unittest.TestCase):
     """Test dialog works."""
 
     def setUp(self):
         """Runs before each test."""
-        self.dialog = Dem2StlDialog(None)
+        self.dialog = STLGeneratorDialog(None)
 
     def tearDown(self):
         """Runs after each test."""
@@ -48,8 +48,8 @@ class Dem2StlDialogTest(unittest.TestCase):
         result = self.dialog.result()
         self.assertEqual(result, QDialog.Rejected)
 
+
 if __name__ == "__main__":
-    suite = unittest.makeSuite(Dem2StlDialogTest)
+    suite = unittest.makeSuite(STLGeneratorDialogTest)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
-
