@@ -51,8 +51,10 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
         self.setupUi(self)
         self.start_thread()
 
+        # Indicates if a background process is already running or not
         self.running = False
 
+    # Connects signals and slots between UI elements and background process
     def connect_signals(self):
         # UI related signals
         self.generateSTL_button.clicked.connect(
@@ -71,6 +73,7 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
 
         # self.worker_thread.finished.connect(self.worker_thread.deleteLater)
 
+    # Starts thread for background process
     def start_thread(self):
         self.worker = WorkerObject()
         self.worker_thread = QtCore.QThread()
@@ -79,6 +82,7 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
 
         self.connect_signals()
 
+    # Performs setup routine before starting to generate STL in background thread
     def begin_generating_STL(self):
 
         if not self.running:
@@ -88,7 +92,6 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
             # Set the parameters for generating the STL file
             self.send_parameters.emit({"printHeight": self.printHeight_input.value(),
                                        "baseHeight": self.baseHeight_input.value(),
-                                       "noDataValue": self.noDataValue_input.value(),
                                        "saveLocation": (self.saveLocation_input.filePath(
                                        ) + "\\" + self.layers_comboBox.currentLayer().name()),
                                        "bedX": self.bedWidth_input.value(),
@@ -111,11 +114,13 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
             self.worker_thread.exit()
             self.worker_thread.wait()
 
+    # Closes dialog window
     def close_window(self):
         self.stop_thread()
         self.close()
 
 
+# Worker that contains all the work done in the background thread
 class WorkerObject(QtCore.QObject):
     progress_changed = QtCore.pyqtSignal(float)
     progress_text = QtCore.pyqtSignal(str)
