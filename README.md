@@ -9,6 +9,7 @@ Once you have QGIS opened up, go to "Plugins" > "Manage and Install Plugins". Se
 
 # Plugin Parameters
 ![Plugin screenshot](doc/plugin.png)
+
 Once the dialog window for the plugin is opened, you will be presented with a variety of options.
 
 At the top, you have a dropdown box that contains all the raster layers you currently have open. Both visible and invisible raster layers will be present here.

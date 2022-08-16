@@ -1,5 +1,7 @@
 from enum import Enum
+from locale import normalize
 import math
+import struct
 from qgis.core import (
     QgsMessageLog,
     Qgis
@@ -24,6 +26,7 @@ class MeshGenerator:
 
         self.verticalExaggeration = .1
         self.bottomLevel = -100
+        self.numTriangles = 0
 
     def set_parameters(self, parameters):
         # ***************************** USER INPUT *************************** #
@@ -95,8 +98,13 @@ class MeshGenerator:
 
     # Function for manually generating STL without the Open3D library
     def manually_generate_stl(self, array):
-        with open(self.saveLocation + ".stl", "w+") as file:
-            file.write("solid QGIS_STL\n")
+        start_time = time.time()
+        self.numTriangles = 0
+        header = [0] * 80
+
+        with open(self.saveLocation + ".stl", "wb+") as file:
+            file.write(struct.pack('<' + 'B' * len(header), * header))
+            file.write(struct.pack('<I', 0))
 
         size_x, size_y = array.shape
         for x in range(size_x - 1):
@@ -144,22 +152,33 @@ class MeshGenerator:
                     self.abort = False
                     return
 
-        with open(self.saveLocation + ".stl", "a") as file:
-            file.write("endsolid\n")
+        print(self.numTriangles)
+
+        # Write the header and number of triangles to the beginning of the file
+        with open(self.saveLocation + ".stl", "r+b") as file:
+            file.seek(0)
+            file.write(struct.pack('<' + 'B'*len(header), *header))
+            file.write(struct.pack('<I', self.numTriangles))
+
+        print("Time to generate STL: " + str(time.time() - start_time))
+
+        QgsMessageLog.logMessage(
+            "Time to generate STL: " + str(time.time() - start_time), level=Qgis.Info)
 
     def write_face(self, vertices):
-        with open(self.saveLocation + ".stl", "a") as file:
-            file.writelines(
-                ["\tfacet normal 0.0 0.0 0.0\n", "\t\touter loop\n"])
+        self.numTriangles += 1
 
-            file.writelines(["\t\t\tvertex {0} {1} {2}\n".format(
-                vertices[0][0] * self.lineWidth, vertices[0][1] * self.lineWidth, vertices[0][2]),
-                "\t\t\tvertex {0} {1} {2}\n".format(
-                vertices[1][0] * self.lineWidth, vertices[1][1] * self.lineWidth, vertices[1][2]),
-                "\t\t\tvertex {0} {1} {2}\n".format(
-                vertices[2][0] * self.lineWidth, vertices[2][1] * self.lineWidth, vertices[2][2])])
+        with open(self.saveLocation + ".stl", "ab") as file:
+            # Writes normal vector
+            normal = [0.0, 0.0, 0.0]
+            file.write(struct.pack('<' + 'f'*len(normal), *normal))
 
-            file.writelines(["\t\tendloop\n", "\tendfacet\n"])
+            # Writes the 3 vertices
+            for row in vertices:
+                file.write(struct.pack('<' + 'f'*len(row), *row))
+
+            # Writes attribute byte count
+            file.write(struct.pack('<H', 0))
 
     def add_side_face(self, x1, y1, x2, y2, array):
         if(self.isEdgePoint(x1, y1, array) and self.isEdgePoint(x2, y2, array)):
@@ -173,30 +192,4 @@ class MeshGenerator:
     # Returns whether or not a data point will be on the edge of the model
     def isEdgePoint(self, x, y, array):
         window = array[x-1:x+2, y-1:y+2]
-        return window.size != 0 or window.shape != (3, 3) or (-9999 in window)
-
-
-def main():
-    mesh_generator = MeshGenerator()
-    mesh_generator.set_parameters({"printHeight": 20,
-                                   "baseHeight": 20,
-                                   "saveLocation": "C:/Code/test",
-                                   "bedX": 200,
-                                   "bedY": 200,
-                                   "lineWidth": 0.4})
-    # data = np.load("C:/Code/array_data.npy")
-    # print(data.shape)
-    test_array = np.array([[1, 2, 7, 21312, 590],
-                           [3, -9999, 9, 21093, -45],
-                           [421, 214, 156, 2913, 493],
-                           [2891, 3902, 219, 4891, 214],
-                           [324, 8421, 58, 32, 89412]])
-    # x = 2
-    # y = 2
-    # print(test_array[x][y])
-    # print(mesh_generator.isEdgePoint(x, y, test_array))
-    mesh_generator.manually_generate_stl(test_array)
-
-
-if __name__ == "__main__":
-    main()
+        return window.shape != (3, 3) or (self.noDataValue in window)
