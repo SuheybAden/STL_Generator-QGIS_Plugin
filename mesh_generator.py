@@ -1,7 +1,11 @@
+import ctypes
 from enum import Enum
 from locale import normalize
 import math
+import os
+from shutil import ExecError
 import struct
+import sys
 from qgis.core import (
     QgsMessageLog,
     Qgis
@@ -28,13 +32,21 @@ class MeshGenerator:
         self.bottomLevel = -100
         self.numTriangles = 0
 
+        self.dll_path = os.path.join(os.path.dirname(
+            __file__), 'C_library/MeshGenerator.dll')
+
+        # QgsMessageLog.logMessage(
+        #     "Path to dll is " + self.dll_path, level=Qgis.Info)
+
+        self.lib = ctypes.CDLL(self.dll_path)
+
     def set_parameters(self, parameters):
         # ***************************** USER INPUT *************************** #
         # Height of print excluding the base height (in mm)
         self.printHeight = parameters["printHeight"]
         # Height of extruded base (in mm)
         self.baseHeight = parameters["baseHeight"]
-        self.saveLocation = parameters["saveLocation"]
+        self.saveLocation = parameters["saveLocation"] + ".stl"
 
         # Printer settings in mm
         self.bedX = parameters["bedX"]
@@ -56,7 +68,14 @@ class MeshGenerator:
         self.noDataValue = band.GetNoDataValue()
         QgsMessageLog.logMessage(
             "No data value is: " + str(band.GetNoDataValue()), level=Qgis.Info)
+        if (self.noDataValue is None):
+            QgsMessageLog.logMessage(
+                "NoDataValue of the raster file is NoneType", level=Qgis.Critical)
+            raise ValueError
+
         array = band.ReadAsArray()
+        QgsMessageLog.logMessage(
+            "Array data type is " + str(array.dtype), level=Qgis.Info)
 
         # ****************************** GET FINAL RESOLUTION OF IMAGE ***************************** #
         # Downscales array if the raster image is at a higher resolution than the printer can make
@@ -91,6 +110,8 @@ class MeshGenerator:
         array = array * self.verticalExaggeration
         self.noDataValue *= self.verticalExaggeration
 
+        # np.save("test_data.npy", array)
+
         QgsMessageLog.logMessage(
             "Time to generate height array: " + str(time.time() - start_time), level=Qgis.Info)
 
@@ -99,66 +120,77 @@ class MeshGenerator:
     # Function for manually generating STL without the Open3D library
     def manually_generate_stl(self, array):
         start_time = time.time()
-        self.numTriangles = 0
-        header = [0] * 80
 
-        with open(self.saveLocation + ".stl", "wb+") as file:
-            file.write(struct.pack('<' + 'B' * len(header), * header))
-            file.write(struct.pack('<I', 0))
+        np_float_pointer = np.ctypeslib.ndpointer(
+            dtype=np.float32, ndim=2, flags="C")
 
-        size_x, size_y = array.shape
-        for x in range(size_x - 1):
-            for y in range(size_y - 1):
-                if(not self.abort):
-                    # Get a 2x2 window
-                    window = array[x:x+2, y:y+2]
+        self.lib.generateSTL.argtypes = [np_float_pointer, ctypes.c_int, ctypes.c_int,
+                                         ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_char_p]
+        self.lib.generateSTL.restype = None
 
-                    orientation = np.packbits(
-                        (window != self.noDataValue).flatten())
+        self.lib.generateSTL(array.astype(np.float32), array.shape[0], array.shape[1], self.noDataValue,
+                             self.lineWidth, self.bottomLevel, bytes(self.saveLocation, 'utf-8'))
 
-                    if (window[0][0] != self.noDataValue and
-                            window[1][0] != self.noDataValue and
-                            window[0][1] != self.noDataValue):
+        # self.numTriangles = 0
+        # header = [0] * 80
 
-                        # Add top face
-                        self.write_face([[x, y, window[0][0]],
-                                         [x, y + 1, window[0][1]],
-                                         [x + 1, y, window[1][0]]])
-                        # Add bottom face
-                        self.write_face([[x, y, self.bottomLevel],
-                                         [x + 1, y, self.bottomLevel],
-                                         [x, y + 1, self.bottomLevel]])
-                        # Add side faces
-                        self.add_side_face(x, y, x + 1, y, array)
-                        self.add_side_face(x, y, x, y + 1, array)
-                        self.add_side_face(x + 1, y, x, y + 1, array)
+        # with open(self.saveLocation, "wb+") as file:
+        #     file.write(struct.pack('<' + 'B' * len(header), * header))
+        #     file.write(struct.pack('<I', 0))
 
-                    if (window[1][1] != self.noDataValue and
-                            window[1][0] != self.noDataValue and
-                            window[0][1] != self.noDataValue):
-                        # Add top face
-                        self.write_face([[x + 1, y + 1, window[1][1]],
-                                         [x + 1, y, window[1][0]],
-                                         [x, y + 1, window[0][1]]])
-                        # Add bottom face
-                        self.write_face([[x + 1, y + 1, self.bottomLevel],
-                                         [x, y + 1, self.bottomLevel],
-                                         [x + 1, y, self.bottomLevel]])
-                        # Add side faces
-                        self.add_side_face(x + 1, y + 1, x + 1, y, array)
-                        self.add_side_face(x + 1, y + 1, x, y + 1, array)
-                        self.add_side_face(x + 1, y, x, y + 1, array)
-                else:
-                    self.abort = False
-                    return
+        # size_x, size_y = array.shape
+        # for x in range(size_x - 1):
+        #     for y in range(size_y - 1):
+        #         if(not self.abort):
+        #             # Get a 2x2 window
+        #             window = array[x:x+2, y:y+2]
 
-        print(self.numTriangles)
+        #             orientation = np.packbits(
+        #                 (window != self.noDataValue).flatten())
 
-        # Write the header and number of triangles to the beginning of the file
-        with open(self.saveLocation + ".stl", "r+b") as file:
-            file.seek(0)
-            file.write(struct.pack('<' + 'B'*len(header), *header))
-            file.write(struct.pack('<I', self.numTriangles))
+        #             if (window[0][0] != self.noDataValue and
+        #                     window[1][0] != self.noDataValue and
+        #                     window[0][1] != self.noDataValue):
+
+        #                 # Add top face
+        #                 self.write_face([[x, y, window[0][0]],
+        #                                  [x, y + 1, window[0][1]],
+        #                                  [x + 1, y, window[1][0]]])
+        #                 # Add bottom face
+        #                 self.write_face([[x, y, self.bottomLevel],
+        #                                  [x + 1, y, self.bottomLevel],
+        #                                  [x, y + 1, self.bottomLevel]])
+        #                 # Add side faces
+        #                 self.add_side_face(x, y, x + 1, y, array)
+        #                 self.add_side_face(x, y, x, y + 1, array)
+        #                 self.add_side_face(x + 1, y, x, y + 1, array)
+
+        #             if (window[1][1] != self.noDataValue and
+        #                     window[1][0] != self.noDataValue and
+        #                     window[0][1] != self.noDataValue):
+        #                 # Add top face
+        #                 self.write_face([[x + 1, y + 1, window[1][1]],
+        #                                  [x + 1, y, window[1][0]],
+        #                                  [x, y + 1, window[0][1]]])
+        #                 # Add bottom face
+        #                 self.write_face([[x + 1, y + 1, self.bottomLevel],
+        #                                  [x, y + 1, self.bottomLevel],
+        #                                  [x + 1, y, self.bottomLevel]])
+        #                 # Add side faces
+        #                 self.add_side_face(x + 1, y + 1, x + 1, y, array)
+        #                 self.add_side_face(x + 1, y + 1, x, y + 1, array)
+        #                 self.add_side_face(x + 1, y, x, y + 1, array)
+        #         else:
+        #             self.abort = False
+        #             return
+
+        # print(self.numTriangles)
+
+        # # Write the header and number of triangles to the beginning of the file
+        # with open(self.saveLocation, "r+b") as file:
+        #     file.seek(0)
+        #     file.write(struct.pack('<' + 'B'*len(header), *header))
+        #     file.write(struct.pack('<I', self.numTriangles))
 
         print("Time to generate STL: " + str(time.time() - start_time))
 
@@ -168,7 +200,7 @@ class MeshGenerator:
     def write_face(self, vertices):
         self.numTriangles += 1
 
-        with open(self.saveLocation + ".stl", "ab") as file:
+        with open(self.saveLocation, "ab") as file:
             # Writes normal vector
             normal = [0.0, 0.0, 0.0]
             file.write(struct.pack('<' + 'f'*len(normal), *normal))

@@ -8,6 +8,7 @@
 *.so
 *.so.*
 *.dll
+!MeshGenerator.dll
 *.dylib
 
 # Qt-es

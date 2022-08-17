@@ -151,9 +151,8 @@ class WorkerObject(QtCore.QObject):
 
             self.progress_changed.emit(100.0)
             self.progress_text.emit("%p% Finished Generating STL File!")
-        except:
-            self.progress_text.emit("Failed to Generate STL.")
-            pass
+        except Exception as e:
+            self.progress_text.emit("Failed to Generate STL : " + str(e))
 
         self.finished.emit()
 
