@@ -31,7 +31,7 @@ from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from qgis.core import QgsProject, QgsMapLayerProxyModel
 
 # Initialize Qt resources from file resources.py
-from .resources import *
+from .resources_rc import *
 # Import the code for the dialog
 from .stl_generator_dialog import STLGeneratorDialog
 

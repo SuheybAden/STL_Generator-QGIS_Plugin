@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>STLGenerator</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="resources.qrc">
+    <normaloff>:/plugins/stl_generator/icon.png</normaloff>:/plugins/stl_generator/icon.png</iconset>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
     <widget class="QGroupBox" name="groupBox">
@@ -270,6 +274,8 @@
    <header>qgsmaplayercombobox.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
  <connections/>
 </ui>
