@@ -65,5 +65,4 @@ __pycache__/
 .mypy_cache/
 .vscode/
 pylintrc
-
-.gitignore
+.qt_for_python
