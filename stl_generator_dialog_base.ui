@@ -230,18 +230,11 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout" stretch="12,2,2">
+    <layout class="QHBoxLayout" name="horizontalLayout" stretch="12,2">
      <item>
       <widget class="QPushButton" name="generateSTL_button">
        <property name="text">
         <string>Generate STL</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="abort_button">
-       <property name="text">
-        <string>Abort</string>
        </property>
       </widget>
      </item>

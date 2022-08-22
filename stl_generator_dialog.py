@@ -61,7 +61,6 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
         # UI related signals
         self.generateSTL_button.clicked.connect(
             self.begin_generating_STL)
-        self.abort_button.clicked.connect(self.worker.abort_process)
         self.exit_button.clicked.connect(self.close_window)
 
         # Background process signals
@@ -157,9 +156,3 @@ class WorkerObject(QtCore.QObject):
             self.progress_text.emit("Failed to Generate STL : " + str(e))
 
         self.finished.emit()
-
-    @QtCore.pyqtSlot()
-    def abort_process(self):
-        self.progress_changed.emit(0.0)
-        self.progress_text.emit("Aborted!")
-        self.mesh_generator.abort = True

@@ -26,8 +26,6 @@ class EdgePoint(Enum):
 
 class MeshGenerator:
     def __init__(self):
-        self.abort = False
-
         self.verticalExaggeration = .1
         self.bottomLevel = -100
         self.numTriangles = 0

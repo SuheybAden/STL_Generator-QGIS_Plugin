@@ -114,9 +114,6 @@ class Ui_StlGeneratorDialogBase(object):
         self.generateSTL_button = QtWidgets.QPushButton(StlGeneratorDialogBase)
         self.generateSTL_button.setObjectName("generateSTL_button")
         self.horizontalLayout.addWidget(self.generateSTL_button)
-        self.abort_button = QtWidgets.QPushButton(StlGeneratorDialogBase)
-        self.abort_button.setObjectName("abort_button")
-        self.horizontalLayout.addWidget(self.abort_button)
         self.exit_button = QtWidgets.QPushButton(StlGeneratorDialogBase)
         self.exit_button.setDefault(False)
         self.exit_button.setFlat(False)
@@ -124,7 +121,6 @@ class Ui_StlGeneratorDialogBase(object):
         self.horizontalLayout.addWidget(self.exit_button)
         self.horizontalLayout.setStretch(0, 12)
         self.horizontalLayout.setStretch(1, 2)
-        self.horizontalLayout.setStretch(2, 2)
         self.verticalLayout_3.addLayout(self.horizontalLayout)
 
         self.retranslateUi(StlGeneratorDialogBase)
@@ -143,7 +139,6 @@ class Ui_StlGeneratorDialogBase(object):
         self.label_8.setText(_translate("StlGeneratorDialogBase", "Line Width (mm)"))
         self.groupBox_4.setTitle(_translate("StlGeneratorDialogBase", "File Location"))
         self.generateSTL_button.setText(_translate("StlGeneratorDialogBase", "Generate STL"))
-        self.abort_button.setText(_translate("StlGeneratorDialogBase", "Abort"))
         self.exit_button.setText(_translate("StlGeneratorDialogBase", "Exit"))
 from qgsfilewidget import QgsFileWidget
 from qgsmaplayercombobox import QgsMapLayerComboBox
