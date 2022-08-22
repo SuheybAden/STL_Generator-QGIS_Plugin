@@ -72,8 +72,6 @@ class MeshGenerator:
             raise ValueError
 
         array = band.ReadAsArray()
-        QgsMessageLog.logMessage(
-            "Array data type is " + str(array.dtype), level=Qgis.Info)
 
         # ****************************** GET FINAL RESOLUTION OF IMAGE ***************************** #
         # Downscales array if the raster image is at a higher resolution than the printer can make
