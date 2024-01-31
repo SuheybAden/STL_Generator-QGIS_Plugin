@@ -31,7 +31,7 @@ class MeshGenerator:
         self.numTriangles = 0
 
         self.dll_path = os.path.join(os.path.dirname(
-            __file__), 'C_library/MeshGenerator.dll')
+            __file__), 'backend/MeshGenerator.dll')
 
         # QgsMessageLog.logMessage(
         #     "Path to dll is " + self.dll_path, level=Qgis.Info)

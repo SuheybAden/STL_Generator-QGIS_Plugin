@@ -1,6 +1,6 @@
 <RCC>
     <qresource prefix="/plugins/stl_generator">
         <file>icon.png</file>
-        <file>C_library/MeshGenerator.dll</file>
+        <file>backend/MeshGenerator.dll</file>
     </qresource>
 </RCC>
