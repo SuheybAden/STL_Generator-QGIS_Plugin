@@ -27,6 +27,7 @@ import os
 import sys
 from threading import Thread
 from .mesh_generator import MeshGenerator
+from .preview_window import PreviewWindow
 
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets, QtCore
@@ -71,6 +72,8 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
         self.start_signal.connect(self.worker.generate_STL)
         self.send_parameters.connect(self.worker.mesh_generator.set_parameters)
         self.selected_layer.connect(self.worker.set_current_layer)
+        self.preview_checkBox.stateChanged.connect(
+            self.worker.check_box_status_changed)
 
         # self.worker_thread.finished.connect(self.worker_thread.deleteLater)
 
@@ -132,10 +135,16 @@ class WorkerObject(QtCore.QObject):
         self.mesh_generator = MeshGenerator()
         self.running = False
         self.current_layer = ""
+        self.is_checked = False
 
     @QtCore.pyqtSlot(str)
     def set_current_layer(self, path):
         self.current_layer = path
+
+    @QtCore.pyqtSlot(int)
+    def check_box_status_changed(self, status):
+        # Checks if the check box state is equal to Qt::Checked (aka 2)
+        self.is_checked = status == 2
 
     # Generates STL file on button press
     @QtCore.pyqtSlot()
@@ -152,6 +161,11 @@ class WorkerObject(QtCore.QObject):
 
             self.progress_changed.emit(100.0)
             self.progress_text.emit("%p% Finished Generating STL File!")
+
+            if self.is_checked:
+                preview_window = PreviewWindow()
+                preview_window.exec()
+
         except Exception as e:
             self.progress_text.emit("Failed to Generate STL : " + str(e))
 
