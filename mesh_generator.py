@@ -24,6 +24,14 @@ class EdgePoint(Enum):
     BOTTOM_LEFT = 4
 
 
+class MeshGeneratorErrors(Enum):
+    NO_ERROR = 0,
+    MISSING_DLL = 1,
+    DEM_INACCESSIBLE = 2,
+    INVALID_NO_DATA_VALUE = 3,
+    DLL_FUNCTION_FAILED = 4
+
+
 class MeshGenerator:
     def __init__(self):
         self.verticalExaggeration = .1
@@ -33,10 +41,6 @@ class MeshGenerator:
         self.dll_path = os.path.join(os.path.dirname(
             __file__), 'backend/MeshGenerator.dll')
 
-        # QgsMessageLog.logMessage(
-        #     "Path to dll is " + self.dll_path, level=Qgis.Info)
-
-        self.lib = ctypes.CDLL(self.dll_path)
 
     def set_parameters(self, parameters):
         # ***************************** USER INPUT *************************** #
@@ -51,6 +55,14 @@ class MeshGenerator:
         self.bedY = parameters["bedY"]
         self.lineWidth = parameters["lineWidth"]
 
+        # Load the necessary DLL file(s)
+        try:
+            self.lib = ctypes.CDLL(self.dll_path)
+        except Exception as e:
+            return MeshGeneratorErrors.MISSING_DLL
+
+        return MeshGeneratorErrors.NO_ERROR
+
     def generate_height_array(self, source_dem):
         start_time = time.time()
 
@@ -58,7 +70,7 @@ class MeshGenerator:
 
         if not dem:
             QgsMessageLog.logMessage("Failed to open DEM", level=Qgis.Critical)
-            return
+            return MeshGeneratorErrors.DEM_INACCESSIBLE
 
         QgsMessageLog.logMessage("Opened DEM", level=Qgis.Info)
 
@@ -67,9 +79,9 @@ class MeshGenerator:
         QgsMessageLog.logMessage(
             "No data value is: " + str(band.GetNoDataValue()), level=Qgis.Info)
         if (self.noDataValue is None):
-            QgsMessageLog.logMessage(
-                "NoDataValue of the raster file is NoneType", level=Qgis.Critical)
-            raise ValueError
+            # QgsMessageLog.logMessage(
+            #     "NoDataValue of the raster file is NoneType", level=Qgis.Critical)
+            return MeshGeneratorErrors.INVALID_NO_DATA_VALUE
 
         array = band.ReadAsArray()
 
@@ -111,21 +123,29 @@ class MeshGenerator:
         QgsMessageLog.logMessage(
             "Time to generate height array: " + str(time.time() - start_time), level=Qgis.Info)
 
-        return array
+        self.array = array
+
+        return MeshGeneratorErrors.NO_ERROR
 
     # Function for manually generating STL without the Open3D library
-    def manually_generate_stl(self, array):
+    def manually_generate_stl(self):
         start_time = time.time()
 
         np_float_pointer = np.ctypeslib.ndpointer(
             dtype=np.float32, ndim=2, flags="C_CONTIGUOUS")
 
         self.lib.generateSTL.argtypes = [np_float_pointer, ctypes.c_int, ctypes.c_int,
-                                         ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_char_p]
+                                            ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_char_p]
         self.lib.generateSTL.restype = None
 
-        self.lib.generateSTL(array.astype(np.float32), array.shape[0], array.shape[1], self.noDataValue,
-                             self.lineWidth, self.bottomLevel, bytes(self.saveLocation, 'utf-8'))
+        try:
+            self.lib.generateSTL(self.array.astype(np.float32), self.array.shape[0], self.array.shape[1], self.noDataValue,
+                                 self.lineWidth, self.bottomLevel, bytes(self.saveLocation, 'utf-8'))
+
+        except Exception as e:
+            return MeshGeneratorErrors.DLL_FUNCTION_FAILED
 
         QgsMessageLog.logMessage(
             "Time to generate STL: " + str(time.time() - start_time), level=Qgis.Info)
+
+        return MeshGeneratorErrors.NO_ERROR
