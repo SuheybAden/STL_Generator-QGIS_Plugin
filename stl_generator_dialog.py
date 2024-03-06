@@ -54,6 +54,8 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
         self.setupUi(self)
         self.start_thread()
 
+        self.saveLocation_input.setFilePath(os.path.expanduser('~'))
+
         # Indicates if a background process is already running or not
         self.running = False
 
