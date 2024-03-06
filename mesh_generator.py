@@ -66,68 +66,48 @@ class MeshGenerator:
     def generate_height_array(self, source_dem):
         start_time = time.time()
 
+        # Opens the raster file being used
         dem = gdal.Open(source_dem, gdal.GA_ReadOnly)
-
         if not dem:
             QgsMessageLog.logMessage("Failed to open DEM", level=Qgis.Critical)
             return MeshGeneratorErrors.DEM_INACCESSIBLE
+        band = dem.GetRasterBand(1)
 
         QgsMessageLog.logMessage("Opened DEM", level=Qgis.Info)
 
-        band = dem.GetRasterBand(1)
+        # Check that the raster has a valid no data value
         self.noDataValue = band.GetNoDataValue()
-        QgsMessageLog.logMessage(
-            "No data value is: " + str(band.GetNoDataValue()), level=Qgis.Info)
         if (self.noDataValue is None):
-            # QgsMessageLog.logMessage(
-            #     "NoDataValue of the raster file is NoneType", level=Qgis.Critical)
             return MeshGeneratorErrors.INVALID_NO_DATA_VALUE
-
-        array = band.ReadAsArray()
-
-        # ****************************** GET FINAL RESOLUTION OF IMAGE ***************************** #
-        # Downscales array if the raster image is at a higher resolution than the printer can make
-        imgWidth, imgHeight = array.shape
 
         # Gets the maximum resolution of the printer on each axis
         maxResX = self.bedX/self.lineWidth
         maxResY = self.bedY/self.lineWidth
 
-        xScaling = math.floor(imgWidth/maxResX) if imgWidth > maxResX else 0
-        yScaling = math.floor(imgHeight/maxResY) if imgHeight > maxResY else 0
-
-        # Gets the larger of the two scaling factors
-        scalingFactor = max(xScaling, yScaling)
-
-        # Downscales array by scaling factor
-        array = array[::scalingFactor, :: scalingFactor]
+        # Load the raster file as an array
+        self.array = band.ReadAsArray(
+            buf_xsize=maxResX, buf_ysize=maxResY, buf_type=gdal.GDT_Float32, resample_alg=gdal.GRIORA_NearestNeighbour)
 
         # *************************** GET VERTICAL EXAGGERATION OF IMAGE *************************** #
-        # Get min and max height values
-        stats = band.GetStatistics(True, True)
-        minValue = stats[0]
-        maxValue = stats[1]
+        # Load stats from the raster image
+        minValue = band.GetMinimum()
+        maxValue = band.GetMaximum()
+        if not minValue or not maxValue:
+            (minValue, maxValue) = band.ComputeRasterMinMax(True)
 
-        imgWidth, imgHeight = array.shape
-        heightDiff = maxValue - minValue
-
-        self.verticalExaggeration = self.printHeight / heightDiff
+        self.verticalExaggeration = self.printHeight / (maxValue - minValue)
         self.bottomLevel = (
             minValue * self.verticalExaggeration) - self.baseHeight
 
-        array = array * self.verticalExaggeration
+        self.array *= self.verticalExaggeration
         self.noDataValue *= self.verticalExaggeration
-
-        # np.save("test_data.npy", array)
 
         QgsMessageLog.logMessage(
             "Time to generate height array: " + str(time.time() - start_time), level=Qgis.Info)
 
-        self.array = array
-
         return MeshGeneratorErrors.NO_ERROR
 
-    # Function for manually generating STL without the Open3D library
+    # Function for manually generating STL
     def manually_generate_stl(self):
         start_time = time.time()
 
