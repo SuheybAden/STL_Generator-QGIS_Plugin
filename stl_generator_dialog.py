@@ -126,16 +126,16 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
 
         if (error == MeshGeneratorErrors.MISSING_DLL):
             QMessageBox.critical(self, self.tr(
-                "Can't Find Plugin Dependencies"), self.tr("Please make sure that MeshGenerator.dll is available with the other plugin files"))
+                "DLL Error"), self.tr("Couldn't find and/or load the required DLL(s)."))
         elif (error == MeshGeneratorErrors.DEM_INACCESSIBLE):
             QMessageBox.critical(self, self.tr(
-                "Can't Access Raster File"), self.tr("Please try using another raster file."))
+                "Raster Error"), self.tr("The selected raster file couldn't be opened."))
         elif (error == MeshGeneratorErrors.INVALID_NO_DATA_VALUE):
             QMessageBox.critical(self, self.tr(
-                "Invalid No Data Value"), self.tr("Please use a raster file with a defined NoDataValue (ex: -9999)"))
+                "Invalid No Data Value"), self.tr("Please use a raster file with a defined NoDataValue (ex: -9999)."))
         elif (error == MeshGeneratorErrors.DLL_FUNCTION_FAILED):
             QMessageBox.critical(self, self.tr(
-                "Internal Error"), self.tr("One of the dependencies had a function call that failed."))
+                "Internal Error"), self.tr("A function call of one of the dependencies has failed."))
 
     # Closes dialog window
     def close_window(self):
