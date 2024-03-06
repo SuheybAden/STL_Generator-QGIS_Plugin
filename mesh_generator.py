@@ -6,14 +6,9 @@ import os
 from shutil import ExecError
 import struct
 import sys
-from qgis.core import (
-    QgsMessageLog,
-    Qgis
-)
 
 import numpy as np
 from osgeo import gdal, ogr
-import time
 
 
 class EdgePoint(Enum):
@@ -64,16 +59,11 @@ class MeshGenerator:
         return MeshGeneratorErrors.NO_ERROR
 
     def generate_height_array(self, source_dem):
-        start_time = time.time()
-
         # Opens the raster file being used
         dem = gdal.Open(source_dem, gdal.GA_ReadOnly)
         if not dem:
-            QgsMessageLog.logMessage("Failed to open DEM", level=Qgis.Critical)
             return MeshGeneratorErrors.DEM_INACCESSIBLE
         band = dem.GetRasterBand(1)
-
-        QgsMessageLog.logMessage("Opened DEM", level=Qgis.Info)
 
         # Check that the raster has a valid no data value
         self.noDataValue = band.GetNoDataValue()
@@ -102,15 +92,10 @@ class MeshGenerator:
         self.array *= self.verticalExaggeration
         self.noDataValue *= self.verticalExaggeration
 
-        QgsMessageLog.logMessage(
-            "Time to generate height array: " + str(time.time() - start_time), level=Qgis.Info)
-
         return MeshGeneratorErrors.NO_ERROR
 
     # Function for manually generating STL
     def manually_generate_stl(self):
-        start_time = time.time()
-
         np_float_pointer = np.ctypeslib.ndpointer(
             dtype=np.float32, ndim=2, flags="C_CONTIGUOUS")
 
@@ -124,8 +109,5 @@ class MeshGenerator:
 
         except Exception as e:
             return MeshGeneratorErrors.DLL_FUNCTION_FAILED
-
-        QgsMessageLog.logMessage(
-            "Time to generate STL: " + str(time.time() - start_time), level=Qgis.Info)
 
         return MeshGeneratorErrors.NO_ERROR
