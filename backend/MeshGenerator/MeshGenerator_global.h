@@ -1,12 +1,20 @@
 #ifndef MESHGENERATOR_GLOBAL_H
 #define MESHGENERATOR_GLOBAL_H
 
-#include <QtCore/qglobal.h>
-
 #if defined(MESHGENERATOR_LIBRARY)
-#  define MESHGENERATOR_EXPORT Q_DECL_EXPORT
+#ifdef _WIN32
+#define MESHGENERATOR_EXPORT __declspec(dllexport)
+#elif __GNUC__ >= 4
+#define MESHGENERATOR_EXPORT __attribute__((visibility("default")))
 #else
-#  define MESHGENERATOR_EXPORT Q_DECL_IMPORT
+#define MESHGENERATOR_EXPORT
+#endif
+#else
+#ifdef _WIN32
+#define MESHGENERATOR_EXPORT __declspec(dllimport)
+#else
+#define MESHGENERATOR_EXPORT
+#endif
 #endif
 
 #endif // MESHGENERATOR_GLOBAL_H
