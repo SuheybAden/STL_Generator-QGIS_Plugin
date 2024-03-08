@@ -11,7 +11,6 @@ add_library(MeshGenerator SHARED
   meshgenerator.h
 )
 
-set_target_properties(MeshGenerator PROPERTIES PUBLIC_HEADER meshgenerator.h)
 set_target_properties(MeshGenerator
   PROPERTIES
   C_VISIBILITY_PRESET hidden
@@ -22,5 +21,4 @@ target_compile_definitions(MeshGenerator PRIVATE MESHGENERATOR_LIBRARY)
 
 install(TARGETS MeshGenerator
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
