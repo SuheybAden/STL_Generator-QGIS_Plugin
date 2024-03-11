@@ -78,9 +78,19 @@ class MeshGenerator:
         maxResX = math.ceil(self.bedX/self.lineWidth)
         maxResY = math.ceil(self.bedY/self.lineWidth)
 
+        # Loads the x and y lengths of the raster
+        imgWidth = dem.RasterXSize
+        imgHeight = dem.RasterYSize
+
+        # Gets the scaling factor needed to preserve the image ratio
+        # while not going over the maximum resolutions of the printer
+        scalingFactor = max(math.floor(imgWidth/maxResX), math.floor(imgHeight/maxResY))
+
         # Load the raster file as an array
-        self.array = band.ReadAsArray(
-            buf_xsize=maxResX, buf_ysize=maxResY, buf_type=gdal.GDT_Float32, resample_alg=gdal.GRIORA_NearestNeighbour)
+        self.array = band.ReadAsArray(buf_xsize=math.ceil(imgWidth/scalingFactor),
+                                      buf_ysize=math.ceil(imgHeight/scalingFactor),
+                                      buf_type=gdal.GDT_Float32,
+                                      resample_alg=gdal.GRIORA_NearestNeighbour)
 
         # *************************** GET VERTICAL EXAGGERATION OF IMAGE *************************** #
         # Load stats from the raster image
@@ -104,7 +114,8 @@ class MeshGenerator:
             dtype=np.float32, ndim=2, flags="C_CONTIGUOUS")
 
         self.lib.generateSTL.argtypes = [np_float_pointer, ctypes.c_int, ctypes.c_int,
-                                            ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_char_p]
+                                         ctypes.c_float, ctypes.c_float, ctypes.c_float,
+                                         ctypes.c_char_p]
         self.lib.generateSTL.restype = None
 
         try:
