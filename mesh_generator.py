@@ -4,6 +4,7 @@ from locale import normalize
 import math
 import os
 from shutil import ExecError
+import platform
 import struct
 import sys
 
@@ -33,9 +34,12 @@ class MeshGenerator:
         self.bottomLevel = -100
         self.numTriangles = 0
 
-        self.dll_path = os.path.join(os.path.dirname(
-            __file__), 'backend/MeshGenerator.dll')
-
+        if platform.system() == "Windows":
+            self.dll_path = os.path.join(os.path.dirname(
+                __file__), 'backend', 'MeshGenerator', 'bin', 'MeshGenerator.dll')
+        else:
+            self.dll_path = os.path.join(os.path.dirname(
+                __file__), 'backend', 'MeshGenerator', 'lib', 'libMeshGenerator.so')
 
     def set_parameters(self, parameters):
         # ***************************** USER INPUT *************************** #
@@ -43,7 +47,7 @@ class MeshGenerator:
         self.printHeight = parameters["printHeight"]
         # Height of extruded base (in mm)
         self.baseHeight = parameters["baseHeight"]
-        self.saveLocation = parameters["saveLocation"] + ".stl"
+        self.saveLocation = parameters["saveLocation"]
 
         # Printer settings in mm
         self.bedX = parameters["bedX"]
@@ -71,8 +75,8 @@ class MeshGenerator:
             return MeshGeneratorErrors.INVALID_NO_DATA_VALUE
 
         # Gets the maximum resolution of the printer on each axis
-        maxResX = self.bedX/self.lineWidth
-        maxResY = self.bedY/self.lineWidth
+        maxResX = math.ceil(self.bedX/self.lineWidth)
+        maxResY = math.ceil(self.bedY/self.lineWidth)
 
         # Load the raster file as an array
         self.array = band.ReadAsArray(

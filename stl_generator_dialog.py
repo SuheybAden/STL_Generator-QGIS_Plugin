@@ -91,14 +91,14 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
     def begin_generating_STL(self):
 
         if not self.running:
-            self.progress.setValue(0.0)
+            self.progress.setValue(0)
             self.progress.setFormat("%p% Beginning to Generate STL...")
 
             # Set the parameters for generating the STL file
             self.send_parameters.emit({"printHeight": self.printHeight_input.value(),
                                        "baseHeight": self.baseHeight_input.value(),
-                                       "saveLocation": (self.saveLocation_input.filePath(
-                                       ) + "\\" + self.layers_comboBox.currentLayer().name()),
+                                       "saveLocation": os.path.join(self.saveLocation_input.filePath(
+                                       ), self.layers_comboBox.currentLayer().name() + ".stl"),
                                        "bedX": self.bedWidth_input.value(),
                                        "bedY": self.bedLength_input.value(),
                                        "lineWidth": self.lineWidth_input.value()})
@@ -147,7 +147,7 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
 
 # Worker that contains all the work done in the background thread
 class WorkerObject(QtCore.QObject):
-    progress_changed = QtCore.pyqtSignal(float)
+    progress_changed = QtCore.pyqtSignal(int)
     progress_text = QtCore.pyqtSignal(str)
     handle_generator_error = QtCore.pyqtSignal(object)
     finished = QtCore.pyqtSignal()
@@ -174,7 +174,7 @@ class WorkerObject(QtCore.QObject):
     @QtCore.pyqtSlot()
     def generate_STL(self):
         try:
-            self.progress_changed.emit(10.0)
+            self.progress_changed.emit(10)
             self.progress_text.emit("%p% Reading Raster Data...")
             error = self.mesh_generator.generate_height_array(
                 source_dem=self.current_layer)
@@ -183,7 +183,7 @@ class WorkerObject(QtCore.QObject):
                 self.finished.emit()
                 return
 
-            self.progress_changed.emit(60.0)
+            self.progress_changed.emit(60)
             self.progress_text.emit("%p% Putting Together STL File...")
             error = self.mesh_generator.manually_generate_stl()
             if error != MeshGeneratorErrors.NO_ERROR:
@@ -191,7 +191,7 @@ class WorkerObject(QtCore.QObject):
                 self.finished.emit()
                 return
 
-            self.progress_changed.emit(100.0)
+            self.progress_changed.emit(100)
             self.progress_text.emit("%p% Finished Generating STL File!")
         except Exception as e:
             self.progress_text.emit("Failed to Generate STL : " + str(e))
