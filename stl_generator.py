@@ -28,7 +28,9 @@ from matplotlib.style import available
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from qgis.core import QgsProject, QgsMapLayerProxyModel
+from qgis.core import QgsProject, QgsMapLayerProxyModel, QgsApplication
+
+from .processing_provider.provider import Provider
 
 # Initialize Qt resources from file resources.py
 from .resources_rc import *
@@ -57,6 +59,8 @@ class STLGenerator:
             self.plugin_dir,
             'i18n',
             'STL_Generator_{}.qm'.format(locale))
+
+        self.provider = None
 
         if os.path.exists(locale_path):
             self.translator = QTranslator()
@@ -162,6 +166,10 @@ class STLGenerator:
 
         return action
 
+    def initProcessing(self):
+        self.provider = Provider()
+        QgsApplication.processingRegistry().addProvider(self.provider)
+
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
@@ -171,6 +179,8 @@ class STLGenerator:
             text=self.tr(u'Generate an STL file'),
             callback=self.run,
             parent=self.iface.mainWindow())
+
+        self.initProcessing()
 
         # will be set False in run()
         self.first_start = True
@@ -182,6 +192,8 @@ class STLGenerator:
                 self.tr(u'&STL Generator'),
                 action)
             self.iface.removeToolBarIcon(action)
+
+        QgsApplication.processingRegistry().removeProvider(self.provider)
 
     def run(self):
         """Run method that performs all the real work"""

@@ -18,7 +18,7 @@ repository=https://github.com/SuheybAden/STL_Generator-QGIS_Plugin
 
 # Recommended items:
 
-hasProcessingProvider=no
+hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 # changelog=
 
