@@ -5,12 +5,12 @@
 [general]
 name=STL Generator
 qgisMinimumVersion=3.0
-description=This plugin lets you generate an STL from a DEM and allows the exclusion of nodata regions.
+description=Generate STLs for 3D printing
 version=1.0.0
 author=Suheyb Aden
 email=suheyb1@gmail.com
 
-about=Plugin for generating a STL file from a DEM. Gives the option of excluding nodata regions from the generated STL
+about=Plugin for generating a STL file based off of a raster file. Excludes nodata regions from the generated STL.
 
 tracker=https://github.com/SuheybAden/STL_Generator-QGIS_Plugin/issues
 repository=https://github.com/SuheybAden/STL_Generator-QGIS_Plugin
