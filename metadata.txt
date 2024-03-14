@@ -6,7 +6,7 @@
 name=STL Generator
 qgisMinimumVersion=3.0
 description=This plugin lets you generate an STL from a DEM and allows the exclusion of nodata regions.
-version=0.1
+version=1.0.0
 author=Suheyb Aden
 email=suheyb1@gmail.com
 
@@ -20,14 +20,19 @@ repository=https://github.com/SuheybAden/STL_Generator-QGIS_Plugin
 
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
-# changelog=
+changelog= Added a processing plugin
+			Added Linux support
+			Improved error message boxes
+			Better performance with larger raster files
+
 
 # Tags are comma separated with spaces allowed
-tags=STL
+tags=STL, raster, 3D printing
 
 homepage=https://suheybaden.github.io/STL_Generator-QGIS_Plugin/
 category=Raster
 icon=icon.png
+
 # experimental flag
 experimental=False
 
@@ -38,9 +43,6 @@ deprecated=False
 # (or upgraded) can be specified.
 # Check the documentation for more information.
 # plugin_dependencies=
-
-Category of the plugin: Raster, Vector, Database or Web
-# category=
 
 # If the plugin can run on QGIS Server.
 server=False
