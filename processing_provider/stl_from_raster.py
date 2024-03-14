@@ -111,8 +111,7 @@ class STLFromRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT,
-                self.tr('Input DEM layer'),
-                [QgsProcessing.SourceType.TypeRaster]
+                self.tr('Input DEM layer')
             )
         )
 
@@ -169,7 +168,8 @@ class STLFromRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFolderDestination(
                 self.OUTPUT,
-                self.tr('Output File Destination')
+                self.tr('Output File Destination'),
+                os.path.expanduser('~')
             )
         )
 
