@@ -133,6 +133,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
             )
         )
 
+        # The field to split the vector file by
         self.addParameter(
             QgsProcessingParameterField(
                 self.INPUT_FIELD,
@@ -142,6 +143,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
             )
         )
 
+        # The distance (in mm) from the lowest point of the model to the highest, not including the base
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.MODEL_HEIGHT,
@@ -152,6 +154,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
             )
         )
 
+        # The thickness of the base in mm
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.BASE_THICKNESS,
@@ -162,6 +165,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
             )
         )
 
+        # The bed width of the user's 3D printer
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.BED_WIDTH,
@@ -172,6 +176,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
             )
         )
 
+        # The bed length of the user's 3D printer
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.BED_LENGTH,
@@ -182,6 +187,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
             )
         )
 
+        # The line width being used by the user's 3D printer
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.LINE_WIDTH,
@@ -191,7 +197,8 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
                 minValue=0
             )
         )
-        # The folder destination where we'll save the generated STL
+
+        # The folder destination where we'll save the generated STL(s)
         self.addParameter(
             QgsProcessingParameterFolderDestination(
                 self.OUTPUT, self.tr("Output File Destination"), os.path.expanduser("~")
@@ -227,7 +234,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
         # Send some information to the user
         feedback.pushInfo("Loaded all the parameters\n")
 
-        # Make sure the vector layer has the same projection as the raster layer
+        # Change the projection of the vector layer to match the raster layer if it doesn't already
         if orig_vector_layer.crs() != orig_raster_layer.crs():
             vector_path = processing.run(
                 "native:reprojectlayer",
@@ -257,14 +264,14 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
         feedback.pushInfo("Split the vector file")
 
         # Clip the raster file using the vector masks and
-        # find the scale factor required to fit the largest STL in the print bed
+        # find the scale factor required to fit the largest STL onto the print bed
         scale_factor = 1
-        clipped_rasters: list[QgsRasterLayer] = []
+        rasters_to_process: list[QgsRasterLayer] = []
         for mask_filename in vector_filenames:
             layer = QgsVectorLayer(path=mask_filename)
+            overlap = layer.extent().intersect(orig_raster_layer.extent())
 
             # Skip any mask layers that don't overlap with the raster file
-            overlap = layer.extent().intersect(orig_raster_layer.extent())
             if overlap.isEmpty():
                 continue
 
@@ -272,6 +279,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
             feedback.pushInfo(str(mask_filename) +
                               " intersects the raster at " + overlap.toString())
 
+            # Clip the raster layer by the mask layer
             clipped_raster_filename = os.path.join(
                 dest_folder, mask_filename + ".tif"
             )
@@ -288,7 +296,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
                 }
             )["OUTPUT"]
 
-            # Load the raster layer and get its height and width
+            # Load the clipped raster layer and get its height and width
             clipped_raster_layer = QgsRasterLayer(clipped_raster_filename)
 
             larger_bed_axis = max(bed_length, bed_width)
@@ -310,14 +318,15 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
                 )
             )
 
-            clipped_rasters.append(clipped_raster_layer)
+            # Add the clipped raster to the list of rasters to process
+            rasters_to_process.append(clipped_raster_layer)
 
         # Send some information to the user
         feedback.pushInfo("Found the required scale factor: " + str(scale_factor))
 
-        # Generates an STL from each of the clipped raster files
+        # Generates an STL from each of the clipped raster layers
         generated_STLs: list[str] = []
-        for clipped_raster_layer in clipped_rasters:
+        for clipped_raster_layer in rasters_to_process:
             result = processing.run(
                 "stl_generator:stlfromraster",
                 {
@@ -335,7 +344,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
                 generated_STLs.append(result["OUTPUT"])
 
                 # Send some information to the user
-                feedback.pushInfo("Made an stl file for the raster\n")
+                feedback.pushInfo(f"Made an stl for the raster file: {clipped_raster_layer.source()}\n")
 
         # Send some information to the user
         feedback.pushInfo("DONE")
