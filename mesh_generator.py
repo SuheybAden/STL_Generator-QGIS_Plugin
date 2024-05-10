@@ -7,6 +7,7 @@ from shutil import ExecError
 import platform
 import struct
 import sys
+import logging
 
 import numpy as np
 from osgeo import gdal, ogr
@@ -30,6 +31,10 @@ class MeshGeneratorErrors(Enum):
 
 class MeshGenerator:
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        logging.basicConfig(filename="logging.log",
+                            encoding='utf-8', level=logging.DEBUG)
+
         self.verticalExaggeration = .1
         self.bottomLevel = -100
         self.numTriangles = 0
@@ -63,16 +68,20 @@ class MeshGenerator:
         return MeshGeneratorErrors.NO_ERROR
 
     def generate_height_array(self, source_dem):
+
         # Opens the raster file being used
         dem = gdal.Open(source_dem, gdal.GA_ReadOnly)
         if not dem:
             return MeshGeneratorErrors.DEM_INACCESSIBLE
         band = dem.GetRasterBand(1)
+        self.logger.info("Loaded the dem file")
 
         # Check that the raster has a valid no data value
         self.noDataValue = band.GetNoDataValue()
         if (self.noDataValue is None):
             return MeshGeneratorErrors.INVALID_NO_DATA_VALUE
+
+        self.logger.info(f"The no data value is {self.noDataValue}")
 
         # Gets the maximum resolution of the printer on each axis
         maxResX = math.ceil(self.bedX/self.lineWidth)
@@ -84,11 +93,12 @@ class MeshGenerator:
 
         # Gets the scaling factor needed to preserve the image ratio
         # while not going over the maximum resolutions of the printer
-        scalingFactor = max(math.floor(imgWidth/maxResX), math.floor(imgHeight/maxResY))
+        scalingFactor = min(1, maxResX / imgWidth, maxResY / imgHeight)
 
         # Load the raster file as an array
-        self.array = band.ReadAsArray(buf_xsize=math.ceil(imgWidth/scalingFactor),
-                                      buf_ysize=math.ceil(imgHeight/scalingFactor),
+        self.array = band.ReadAsArray(buf_xsize=math.ceil(imgWidth * scalingFactor),
+                                      buf_ysize=math.ceil(
+                                          imgHeight * scalingFactor),
                                       buf_type=gdal.GDT_Float32,
                                       resample_alg=gdal.GRIORA_NearestNeighbour)
 

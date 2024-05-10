@@ -54,6 +54,8 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
     INPUT_FIELD = "INPUT FIELD"
     MODEL_HEIGHT = "MODEL HEIGHT"
     BASE_THICKNESS = "BASE THICKNESS"
+    TOTAL_WIDTH = "TOTAL WIDTH"
+    TOTAL_LENGTH = "TOTAL LENGTH"
     BED_WIDTH = "BED WIDTH"
     BED_LENGTH = "BED LENGTH"
     LINE_WIDTH = "LINE WIDTH"
@@ -168,6 +170,28 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
         # The bed width of the user's 3D printer
         self.addParameter(
             QgsProcessingParameterNumber(
+                self.TOTAL_WIDTH,
+                self.tr("Total Width (mm)"),
+                type=QgsProcessingParameterNumber.Double,
+                defaultValue=200.0,
+                minValue=0.0
+            )
+        )
+
+        # The bed width of the user's 3D printer
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.TOTAL_LENGTH,
+                self.tr("Total Length (mm)"),
+                type=QgsProcessingParameterNumber.Double,
+                defaultValue=200.0,
+                minValue=0.0
+            )
+        )
+
+        # The bed width of the user's 3D printer
+        self.addParameter(
+            QgsProcessingParameterNumber(
                 self.BED_WIDTH,
                 self.tr("Bed Width (mm)"),
                 type=QgsProcessingParameterNumber.Double,
@@ -228,6 +252,10 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
         )
         bed_width = self.parameterAsDouble(parameters, self.BED_WIDTH, context)
         bed_length = self.parameterAsDouble(parameters, self.BED_LENGTH, context)
+        total_width = self.parameterAsDouble(
+            parameters, self.TOTAL_WIDTH, context)
+        total_length = self.parameterAsDouble(
+            parameters, self.TOTAL_LENGTH, context)
         line_width = self.parameterAsDouble(parameters, self.LINE_WIDTH, context)
         dest_folder = self.parameterAsFile(parameters, self.OUTPUT, context)
 
@@ -236,7 +264,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
 
         # Change the projection of the vector layer to match the raster layer if it doesn't already
         if orig_vector_layer.crs() != orig_raster_layer.crs():
-            vector_path = processing.run(
+            orig_vector_layer = processing.run(
                 "native:reprojectlayer",
                 {
                     "INPUT": vector_path,
@@ -265,7 +293,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
 
         # Clip the raster file using the vector masks and
         # find the scale factor required to fit the largest STL onto the print bed
-        scale_factor = 1
+        bed_scale_factor = 1.0
         rasters_to_process: list[QgsRasterLayer] = []
         for mask_filename in vector_filenames:
             layer = QgsVectorLayer(path=mask_filename)
@@ -288,8 +316,6 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
                 {
                     "INPUT": raster_path,
                     "MASK": mask_filename,
-                    "SOURCE_CRS": None,
-                    "TARGET_CRS": None,
                     "TARGET_EXTENT": f'{overlap.xMinimum()}, {overlap.xMaximum()}, {overlap.yMinimum()}, {overlap.yMaximum()}',
                     "MULTITHREADING": False,
                     "OUTPUT": clipped_raster_filename,
@@ -310,31 +336,38 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
                               + str(larger_layer_axis) + ", " + str(smaller_layer_axis))
 
             # Get the min scale factor needed to downscale the raster to fit in the print bed
-            scale_factor = min(
-                scale_factor,
-                min(
-                    larger_bed_axis / larger_layer_axis,
-                    smaller_bed_axis / smaller_layer_axis
-                )
+            bed_scale_factor = min(
+                bed_scale_factor,
+                (larger_bed_axis / line_width) / larger_layer_axis,
+                (smaller_bed_axis / line_width) / smaller_layer_axis
             )
 
             # Add the clipped raster to the list of rasters to process
             rasters_to_process.append(clipped_raster_layer)
 
+        scale_factor = bed_scale_factor
+
         # Send some information to the user
-        feedback.pushInfo("Found the required scale factor: " + str(scale_factor))
+        feedback.pushInfo("The required scale factor: " + str(scale_factor))
 
         # Generates an STL from each of the clipped raster layers
         generated_STLs: list[str] = []
         for clipped_raster_layer in rasters_to_process:
+            width = (clipped_raster_layer.height() * line_width) * scale_factor
+            height = (clipped_raster_layer.width() * line_width) * scale_factor
+
+            # Send some information to the user
+            feedback.pushInfo(
+                f"Width and height: {width}, {height}")
+
             result = processing.run(
                 "stl_generator:stlfromraster",
                 {
                     "INPUT": clipped_raster_layer.source(),
                     "MODEL_HEIGHT": print_height,
                     "BASE THICKNESS": base_thickness,
-                    "BED WIDTH": clipped_raster_layer.height() * scale_factor,
-                    "BED LENGTH": clipped_raster_layer.width() * scale_factor,
+                    "BED WIDTH": width,
+                    "BED LENGTH": height,
                     "LINE WIDTH": line_width,
                     "OUTPUT": dest_folder,
                 }
