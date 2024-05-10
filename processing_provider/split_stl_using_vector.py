@@ -345,10 +345,42 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
             # Add the clipped raster to the list of rasters to process
             rasters_to_process.append(clipped_raster_layer)
 
-        scale_factor = bed_scale_factor
+        # Merge all the relevant raster files together
+        output = processing.run("gdal:merge", {
+            "INPUT": rasters_to_process,
+            "OUTPUT": "TEMPORARY_OUTPUT"
+        })["OUTPUT"]
+        merged_raster = QgsRasterLayer(output)
+
+        # Calculate the min scale factor needed to downscale the raster to fit the user's parameters
+        larger_total_axis = max(total_length, total_width)
+        smaller_total_axis = min(total_length, total_width)
+        larger_raster_axis = max(
+            merged_raster.height(), merged_raster.width())
+        smaller_raster_axis = min(
+            merged_raster.height(), merged_raster.width())
 
         # Send some information to the user
-        feedback.pushInfo("The required scale factor: " + str(scale_factor))
+        feedback.pushInfo("Total vs Raster: " + str(larger_total_axis) + ", " + str(smaller_total_axis) + ", "
+                          + str(larger_raster_axis) + ", " + str(smaller_raster_axis))
+
+        total_raster_scale_factor = min(
+            (larger_total_axis / line_width) / larger_raster_axis, (smaller_total_axis / line_width) / smaller_raster_axis)
+
+        if total_raster_scale_factor > bed_scale_factor:
+            scale_factor = bed_scale_factor
+
+            feedback.pushInfo(
+                "*** WARNING: The total height/width of the STL files will be smaller than expected so that all STLs can fit on the print bed")
+        else:
+            scale_factor = total_raster_scale_factor
+
+        # Send some information to the user
+        feedback.pushInfo(
+            "The calculated scale factor is " + str(scale_factor))
+        feedback.pushInfo(
+            f"The expected total height and width are {(merged_raster.height() * line_width) * scale_factor} and {(merged_raster.width() * line_width) * scale_factor} respectively.")
+
 
         # Generates an STL from each of the clipped raster layers
         generated_STLs: list[str] = []
