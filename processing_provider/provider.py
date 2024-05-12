@@ -2,14 +2,14 @@ from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
 from .stl_from_raster import STLFromRaster
-from .split_stl_using_vector import SplitSTLUsingVector
+from .split_then_generate_stl import SplitThenGenerateSTLs
 
 
 class Provider(QgsProcessingProvider):
 
     def loadAlgorithms(self, *args, **kwargs):
         self.addAlgorithm(STLFromRaster())
-        self.addAlgorithm(SplitSTLUsingVector())
+        self.addAlgorithm(SplitThenGenerateSTLs())
         
     def id(self, *args, **kwargs):
         """The ID of your plugin, used for identifying the provider.

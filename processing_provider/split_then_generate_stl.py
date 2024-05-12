@@ -31,7 +31,7 @@ from ..mesh_generator import MeshGenerator, MeshGeneratorErrors
 import os
 
 
-class SplitSTLUsingVector(QgsProcessingAlgorithm):
+class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
     """
     This is an example algorithm that takes a vector layer and
     creates a new identical one.
@@ -69,7 +69,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
         return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
-        return SplitSTLUsingVector()
+        return SplitThenGenerateSTLs()
 
     def name(self):
         """
@@ -79,14 +79,14 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "splitstlusingvector"
+        return "splitthengeneratestl"
 
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return self.tr("Generate STL(s) from raster split by vector layer")
+        return self.tr("Generate STL(s) from a raster split by a vector layer")
 
     def group(self):
         """
@@ -139,7 +139,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterField(
                 self.INPUT_FIELD,
-                self.tr("Field to Use"),
+                self.tr("Field to Split By"),
                 allowMultiple=False,
                 parentLayerParameterName=self.INPUT_VECTOR,
             )
@@ -167,7 +167,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
             )
         )
 
-        # The bed width of the user's 3D printer
+        # The target combined width of all of the STLs
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.TOTAL_WIDTH,
@@ -178,7 +178,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
             )
         )
 
-        # The bed width of the user's 3D printer
+        # The target combined length of all of the STLs
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.TOTAL_LENGTH,
@@ -379,7 +379,7 @@ class SplitSTLUsingVector(QgsProcessingAlgorithm):
         feedback.pushInfo(
             "The calculated scale factor is " + str(scale_factor))
         feedback.pushInfo(
-            f"The expected total height and width are {(merged_raster.height() * line_width) * scale_factor} and {(merged_raster.width() * line_width) * scale_factor} respectively.")
+            f"The total height and width are {(merged_raster.height() * line_width) * scale_factor} and {(merged_raster.width() * line_width) * scale_factor} respectively.")
 
 
         # Generates an STL from each of the clipped raster layers
