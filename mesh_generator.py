@@ -84,21 +84,21 @@ class MeshGenerator:
         self.logger.info(f"The no data value is {self.noDataValue}")
 
         # Gets the maximum resolution of the printer on each axis
-        maxResX = math.ceil(self.bedX/self.lineWidth)
-        maxResY = math.ceil(self.bedY/self.lineWidth)
+        larger_bed_axis = max(math.ceil(self.bedX/self.lineWidth), math.ceil(self.bedY/self.lineWidth))
+        smaller_bed_axis = min(math.ceil(self.bedX/self.lineWidth), math.ceil(self.bedY/self.lineWidth))
 
         # Loads the x and y lengths of the raster
-        imgWidth = dem.RasterXSize
-        imgHeight = dem.RasterYSize
+        larger_img_axis = max(dem.RasterXSize, dem.RasterYSize)
+        smaller_img_axis = min(dem.RasterXSize, dem.RasterYSize)
 
         # Gets the scaling factor needed to preserve the image ratio
         # while not going over the maximum resolutions of the printer
-        scalingFactor = min(1, maxResX / imgWidth, maxResY / imgHeight)
+        scalingFactor = min(1, larger_bed_axis / larger_img_axis, smaller_bed_axis / smaller_img_axis)
 
         # Load the raster file as an array
-        self.array = band.ReadAsArray(buf_xsize=math.ceil(imgWidth * scalingFactor),
+        self.array = band.ReadAsArray(buf_xsize=math.ceil(dem.RasterXSize * scalingFactor),
                                       buf_ysize=math.ceil(
-                                          imgHeight * scalingFactor),
+                                          dem.RasterYSize * scalingFactor),
                                       buf_type=gdal.GDT_Float32,
                                       resample_alg=gdal.GRIORA_NearestNeighbour)
 
