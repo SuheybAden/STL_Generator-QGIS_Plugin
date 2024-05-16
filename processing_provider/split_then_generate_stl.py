@@ -322,10 +322,11 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
                     "INPUT": raster_path,
                     "MASK": mask_filename,
                     "TARGET_EXTENT": f"{overlap.xMinimum()}, {overlap.xMaximum()}, {overlap.yMinimum()}, {overlap.yMaximum()}",
-                    "MULTITHREADING": False,
+                    "MULTITHREADING": True,
+                    "KEEP_RESOLUTION": True,
                     "OUTPUT": clipped_raster_filename,
                 },
-            )["OUTPUT"]
+            )
 
             # Load the clipped raster layer and get its height and width
             clipped_raster_layer = QgsRasterLayer(clipped_raster_filename)
