@@ -8,6 +8,7 @@ import platform
 import struct
 import sys
 import logging
+import logging.handlers
 
 import numpy as np
 from osgeo import gdal, ogr
@@ -32,8 +33,14 @@ class MeshGeneratorErrors(Enum):
 class MeshGenerator:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        logging.basicConfig(filename="logging.log",
-                            encoding='utf-8', level=logging.DEBUG)
+        formatter = logging.Formatter("%(asctime)s %(message)s")
+        fh = logging.handlers.RotatingFileHandler(
+            os.path.join(os.path.dirname(__file__), "logging.log"),
+            maxBytes=1000000, backupCount=3)
+
+        fh.setFormatter(formatter)
+        self.logger.addHandler(fh)
+        self.logger.setLevel(logging.DEBUG)
 
         self.verticalExaggeration = .1
         self.bottomLevel = -100
@@ -60,28 +67,36 @@ class MeshGenerator:
         self.lineWidth = parameters["lineWidth"]
 
         # Load the necessary DLL file(s)
+        self.logger.info(
+            "Attempting to load the DLL file at %s...", self.dll_path)
         try:
             self.lib = ctypes.CDLL(self.dll_path)
         except Exception as e:
+            self.logger.error("FAILED TO LOAD THE DLL FILE!")
             return MeshGeneratorErrors.MISSING_DLL
+        self.logger.info("Successfully loaded the DLL file.")
 
         return MeshGeneratorErrors.NO_ERROR
 
     def generate_height_array(self, source_dem):
+        self.logger.info("Opening the dem file at %s...", source_dem)
 
         # Opens the raster file being used
         dem = gdal.Open(source_dem, gdal.GA_ReadOnly)
         if not dem:
+            self.logger.error("COULDN'T OPEN THE DEM FILE AT %s!", source_dem)
             return MeshGeneratorErrors.DEM_INACCESSIBLE
         band = dem.GetRasterBand(1)
-        self.logger.info("Loaded the dem file")
+
+        self.logger.info("Loaded the dem file at %s.", source_dem)
 
         # Check that the raster has a valid no data value
         self.noDataValue = band.GetNoDataValue()
         if (self.noDataValue is None):
+            self.logger.error("INVALID NODATA VALUE!")
             return MeshGeneratorErrors.INVALID_NO_DATA_VALUE
 
-        self.logger.info(f"The no data value is {self.noDataValue}")
+        self.logger.info("The no data value is %d.", self.noDataValue)
 
         # Gets the maximum resolution of the printer on each axis
         larger_bed_axis = max(math.ceil(self.bedX/self.lineWidth), math.ceil(self.bedY/self.lineWidth))
@@ -95,6 +110,8 @@ class MeshGenerator:
         # while not going over the maximum resolutions of the printer
         scalingFactor = min(1, larger_bed_axis / larger_img_axis, smaller_bed_axis / smaller_img_axis)
 
+        self.logger.info("The calculated scale factor is %f.", scalingFactor)
+
         # Load the raster file as an array
         self.array = band.ReadAsArray(buf_xsize=math.ceil(dem.RasterXSize * scalingFactor),
                                       buf_ysize=math.ceil(
@@ -102,6 +119,7 @@ class MeshGenerator:
                                       buf_type=gdal.GDT_Float32,
                                       resample_alg=gdal.GRIORA_NearestNeighbour)
 
+        self.logger.info("Finished loading the data array.")
         # *************************** GET VERTICAL EXAGGERATION OF IMAGE *************************** #
         # Load stats from the raster image
         minValue = band.GetMinimum()
@@ -115,6 +133,7 @@ class MeshGenerator:
 
         self.array *= self.verticalExaggeration
         self.noDataValue *= self.verticalExaggeration
+        self.logger.info("Applied the vertical exaggeration.")
 
         return MeshGeneratorErrors.NO_ERROR
 
@@ -128,11 +147,17 @@ class MeshGenerator:
                                          ctypes.c_char_p]
         self.lib.generateSTL.restype = None
 
+        self.logger.info("Creating the STL file...")
+
         try:
             self.lib.generateSTL(self.array.astype(np.float32), self.array.shape[0], self.array.shape[1], self.noDataValue,
                                  self.lineWidth, self.bottomLevel, bytes(self.saveLocation, 'utf-8'))
 
         except Exception as e:
+            self.logger.error("FAILED TO CREATE THE STL FILE!")
+            self.logger.error(e)
             return MeshGeneratorErrors.DLL_FUNCTION_FAILED
 
+        self.logger.info(
+            "Successfully created the STL file at %s.", self.saveLocation)
         return MeshGeneratorErrors.NO_ERROR

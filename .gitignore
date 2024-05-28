@@ -63,6 +63,10 @@ README.html
 *.ply
 *.stl
 
+# Log files
+*.log
+*.log.*
+
 __pycache__/
 .mypy_cache/
 .vscode/
