@@ -72,3 +72,4 @@ __pycache__/
 .vscode/
 pylintrc
 .qt_for_python
+build/
