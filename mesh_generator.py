@@ -79,7 +79,9 @@ class MeshGenerator:
         # Check that the raster has a valid no data value
         self.noDataValue = band.GetNoDataValue()
         if (self.noDataValue is None):
-            return MeshGeneratorErrors.INVALID_NO_DATA_VALUE
+            self.noDataValue = -9999
+            self.logger.info(f"The no data value is {self.noDataValue}")
+            # return MeshGeneratorErrors.INVALID_NO_DATA_VALUE
 
         self.logger.info(f"The no data value is {self.noDataValue}")
 

@@ -364,6 +364,7 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
                         "TARGET_CRS": mask_layer.crs(),
                         "TARGET_EXTENT": f"{overlap.xMinimum()}, {overlap.xMaximum()}, {overlap.yMinimum()}, {overlap.yMaximum()}",
                         "MULTITHREADING": True,
+                        "NODATA": orig_raster_layer.dataProvider().sourceNoDataValue(1),
                         # "KEEP_RESOLUTION": True,
                         "OUTPUT": clipped_raster_filepath,
                     },
