@@ -239,12 +239,12 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
         orig_raster_layer = self.parameterAsRasterLayer(
             parameters, self.INPUT_RASTER, context
         )
-        raster_path = orig_raster_layer.source()
+        raster_filepath = orig_raster_layer.source()
 
         orig_vector_layer = self.parameterAsVectorLayer(
             parameters, self.INPUT_VECTOR, context
         )
-        vector_path = orig_vector_layer.source()
+        vector_filepath = orig_vector_layer.source()
 
         field = self.parameterAsString(parameters, self.INPUT_FIELD, context)
         print_height = self.parameterAsDouble(parameters, self.MODEL_HEIGHT, context)
@@ -262,14 +262,32 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
         feedback.pushInfo("Loaded all the parameters\n")
 
         # **************************************************************************************************
-        # 2) REPROJECT THE VECTOR LAYER IF NECESSARY
+        # 2) VERIFY THAT THE INPUT LAYERS ARE PROPERLY FORMATTED
+
+        # Verify that the raster layer has a no data value
+        feedback.pushInfo("Getting the no data value of the raster layer...")
+
+        if (not orig_raster_layer.dataProvider().sourceHasNoDataValue(1)):
+            feedback.pushWarning("The given raster layer doesn't have a no data value! Setting the no data value to the default of -9999.\n")
+            if (not orig_raster_layer.dataProvider().setNoDataValue(1, -9999)):
+                feedback.pushWarning("ERROR: Failed to set the no data value!")
+                return {self.SUCCESS: False, self.OUTPUT: []}
+            orig_raster_layer.reload()
+            feedback.pushInfo(f"The new no data value is {orig_raster_layer.dataProvider().sourceNoDataValue(1)}\n")
+
+        else:
+            feedback.pushInfo(f"The no data value is {orig_raster_layer.dataProvider().sourceNoDataValue(1)}\n")
 
         # Change the projection of the vector layer to match the raster layer if it doesn't already
+        feedback.pushInfo("Checking if the raster and vector layers have the same projection...")
+        feedback.pushInfo(
+            f"Raster projection: {orig_raster_layer.crs()},\t Vector projection: {orig_vector_layer.crs()}")
+
         if orig_vector_layer.crs() != orig_raster_layer.crs():
             orig_vector_layer = processing.run(
                 "native:reprojectlayer",
                 {
-                    "INPUT": vector_path,
+                    "INPUT": vector_filepath,
                     "TARGET_CRS": orig_raster_layer.crs(),
                     "OUTPUT": "TEMPORARY_OUTPUT",
                 },
@@ -277,58 +295,89 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
 
             # Send some information to the user
             feedback.pushInfo(
-                f"Reprojected the vector layer to {orig_vector_layer.crs()}"
+                f"Reprojected the vector layer to {orig_vector_layer.crs()}!\n"
             )
+
+        else:
+            # Send some information to the user
+            feedback.pushInfo("The layer projections match!\n")
 
         # **************************************************************************************************
         # 3) SPLIT THE VECTOR LAYER ACCORDING TO THE FIELD CHOSEN BY THE USER
 
+        # Send some information to the user
+        feedback.pushInfo(f"Splitting the vector file based on the {field} field...")
+
         # Split the multi polygon layer into multiple vector layers using the "split vector layer" algorithm
-        vector_filenames: list[str] = processing.run(
+        vector_filepaths: list[str] = processing.run(
             "native:splitvectorlayer",
             {
                 "FIELD": field,
                 "FILE_TYPE": 0,
-                "INPUT": vector_path,
+                "INPUT": vector_filepath,
                 "OUTPUT": "TEMPORARY_OUTPUT",
                 "PREFIX_FIELD": True,
             },
         )["OUTPUT_LAYERS"]
 
         # Send some information to the user
-        feedback.pushInfo(f"Split the vector file based on the {field} field")
+        feedback.pushInfo(f"Finished splitting the vector layer!\n")
 
         # **************************************************************************************************
         # 4) CLIP THE RASTER LAYER AND FIND THE APPROPRIATE SCALE FACTOR
+
+        # Send some information to the user
+        feedback.pushInfo("Started clipping the raster layer by the split vector layer.\n")
 
         bed_scale_factor = 1.0
         rasters_to_process: list[QgsRasterLayer] = []
 
         # Clip the raster file using the vector masks and
         # find the scale factor required to fit the largest clipped raster onto the print bed
-        for mask_filename in vector_filenames:
-            mask_layer = QgsVectorLayer(path=mask_filename)
-            overlap = mask_layer.extent().intersect(orig_raster_layer.extent())
+        for mask_filepath in vector_filepaths:
+            # Get the filename of the mask layer so the clipped raster can get the same name
+            filename = mask_filepath.split(".")[-2]
+            clipped_raster_filepath = os.path.join(dest_folder, filename + "_raster.tif")
+
+            # Load the mask layer
+            mask_layer = QgsVectorLayer(path=mask_filepath)
 
             # Skip any mask layers that don't overlap with the raster file
+            overlap = mask_layer.extent().intersect(orig_raster_layer.extent())
             if overlap.isEmpty():
+                # Send some information to the user
+                feedback.pushInfo(f"{filename} has no overlap with the input raster.\n")
                 continue
 
-            # Clip the raster layer with the mask layer
-            clipped_raster_filename = os.path.join(dest_folder, mask_filename + ".tif")
-            processing.run(
-                "gdal:cliprasterbymasklayer",
-                {
-                    "INPUT": raster_path,
-                    "MASK": mask_filename,
-                    "TARGET_EXTENT": f"{overlap.xMinimum()}, {overlap.xMaximum()}, {overlap.yMinimum()}, {overlap.yMaximum()}",
-                    "MULTITHREADING": False,
-                    "OUTPUT": clipped_raster_filename,
-                },
-            )["OUTPUT"]
+            # Send some information to the user
+            feedback.pushInfo(f"Clipping the input raster layer using {filename}...")
+            feedback.pushInfo(f"{overlap.xMinimum()}, {overlap.xMaximum()}, {overlap.yMinimum()}, {overlap.yMaximum()}")
+
+            try:
+                # Clip the raster layer with the mask layer
+                clipped_raster_filepath = processing.run(
+                    "gdal:cliprasterbymasklayer",
+                    {
+                        "INPUT": raster_filepath,
+                        "MASK": mask_filepath,
+                        "SOURCE_CRS": orig_raster_layer.crs(),
+                        "TARGET_CRS": mask_layer.crs(),
+                        "TARGET_EXTENT": f"{overlap.xMinimum()}, {overlap.xMaximum()}, {overlap.yMinimum()}, {overlap.yMaximum()}",
+                        "MULTITHREADING": True,
+                        # "KEEP_RESOLUTION": True,
+                        "OUTPUT": clipped_raster_filepath,
+                    },
+                )["OUTPUT"]
+
+            except QgsProcessingException as e:
+                feedback.pushInfo(f"Error: {e}")
+                return {self.SUCCESS: False, self.OUTPUT: []}
+
+            # Send some information to the user
+            feedback.pushInfo(f"Clipped raster filname: {clipped_raster_filepath}")
 
             # Load the clipped raster layer and get its height and width
-            clipped_raster_layer = QgsRasterLayer(clipped_raster_filename)
+            clipped_raster_layer = QgsRasterLayer(clipped_raster_filepath)
 
             larger_bed_axis = max(bed_length, bed_width)
             smaller_bed_axis = min(bed_length, bed_width)
@@ -348,6 +397,11 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
 
             # Add the clipped raster to the list of rasters to process
             rasters_to_process.append(clipped_raster_layer)
+
+            # Send some information to the user
+            feedback.pushInfo(f"Finished clipping the input raster layer using {filename}.\n")
+
+        feedback.pushInfo("Getting the total extent of the clipped rasters...")
 
         # Merge all the relevant raster files together
         output = processing.run(
@@ -372,17 +426,20 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
         else:
             scale_factor = bed_scale_factor
 
-            feedback.pushInfo(
+            feedback.pushWarning(
                 "*** WARNING: The total height/width of the STL files will be smaller than expected so that all STLs can fit on the print bed"
             )
-            feedback.pushInfo(
-                f"The new total height and width are {(merged_raster.height() * line_width) * scale_factor} mm and {(merged_raster.width() * line_width) * scale_factor} mm respectively.\n"
-            )
+            
+        feedback.pushInfo(
+            f"The total length and width of the models are {(merged_raster.height() * line_width) * scale_factor} mm and {(merged_raster.width() * line_width) * scale_factor} mm respectively.\n"
+        )
 
         # **************************************************************************************************
         # 5) GENERATE AN STL FOR EACH CLIPPED RASTER LAYER
+        feedback.pushInfo("Generating the STL files...\n")
 
         generated_STLs: list[str] = []
+        success = True
 
         # Generates an STL from each of the clipped raster layers
         for clipped_raster_layer in rasters_to_process:
@@ -399,12 +456,11 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
                     "BED LENGTH": height,
                     "LINE WIDTH": line_width,
                     "OUTPUT": dest_folder,
-                },
+                }, context=context, feedback=feedback
             )
 
+            stl_filename = result["OUTPUT"]
             if result["SUCCESS"]:
-                stl_filename = result["OUTPUT"]
-
                 generated_STLs.append(stl_filename)
 
                 # Send some information to the user
@@ -412,6 +468,9 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
                 feedback.pushInfo(
                     f"Its height and width are {height} mm and {width} mm\n"
                 )
+            else:
+                feedback.pushWarning(f"Failed to generate the STL file {stl_filename}\n")
+                success = False
 
         # Return the results of the algorithm
-        return {self.SUCCESS: True, self.OUTPUT: generated_STLs}
+        return {self.SUCCESS: success, self.OUTPUT: generated_STLs}

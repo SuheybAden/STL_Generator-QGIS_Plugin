@@ -219,14 +219,29 @@ class STLFromRaster(QgsProcessingAlgorithm):
 
         # Preprocess the raster image
         error = mesh_generator.generate_height_array(source_dem=dem_path)
-
         if error != MeshGeneratorErrors.NO_ERROR:
+            if (error == MeshGeneratorErrors.MISSING_DLL):
+                feedback.pushWarning("DLL ERROR: Couldn't find and/or load the required DLL(s).")
+            elif (error == MeshGeneratorErrors.DEM_INACCESSIBLE):
+                feedback.pushWarning("RASTER ERROR: The selected raster file couldn't be opened.")
+            elif (error == MeshGeneratorErrors.INVALID_NO_DATA_VALUE):
+                feedback.pushWarning("INVALID NO DATA VALUE: Please use a raster file with a defined NoDataValue (ex: -9999).")
+            elif (error == MeshGeneratorErrors.DLL_FUNCTION_FAILED):
+                feedback.pushWarning("INTERNAL ERROR: A function call of one of the dependencies has failed.")
             QgsProcessingException("Something went wrong!")
             return {self.OUTPUT: output_filename, self.SUCCESS: False}
 
         # Generate the STL
         error = mesh_generator.manually_generate_stl()
         if error != MeshGeneratorErrors.NO_ERROR:
+            if (error == MeshGeneratorErrors.MISSING_DLL):
+                feedback.pushWarning("DLL ERROR: Couldn't find and/or load the required DLL(s).")
+            elif (error == MeshGeneratorErrors.DEM_INACCESSIBLE):
+                feedback.pushWarning("RASTER ERROR: The selected raster file couldn't be opened.")
+            elif (error == MeshGeneratorErrors.INVALID_NO_DATA_VALUE):
+                feedback.pushWarning("INVALID NO DATA VALUE: Please use a raster file with a defined NoDataValue (ex: -9999).")
+            elif (error == MeshGeneratorErrors.DLL_FUNCTION_FAILED):
+                feedback.pushWarning("INTERNAL ERROR: A function call of one of the dependencies has failed.")
             QgsProcessingException("Something went wrong!")
             return {self.OUTPUT: output_filename, self.SUCCESS: False}
 
