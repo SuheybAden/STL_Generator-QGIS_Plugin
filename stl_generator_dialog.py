@@ -26,7 +26,7 @@ from email import message
 import os
 import sys
 from threading import Thread
-from .mesh_generator import MeshGenerator, MeshGeneratorErrors
+from .mesh_generator import MeshGenerator, MeshGeneratorError
 
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets, QtCore
@@ -120,24 +120,9 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
             self.worker_thread.wait()
 
     @QtCore.pyqtSlot(object)
-    def handle_generator_error(self, error):
-        if (error == MeshGeneratorErrors.NO_ERROR):
-            return
-
-        self.progress.setFormat("%p% An Error Has Occurred.")
-
-        if (error == MeshGeneratorErrors.MISSING_DLL):
-            QMessageBox.critical(self, self.tr(
-                "DLL Error"), self.tr("Couldn't find and/or load the required DLL(s)."))
-        elif (error == MeshGeneratorErrors.DEM_INACCESSIBLE):
-            QMessageBox.critical(self, self.tr(
-                "Raster Error"), self.tr("The selected raster file couldn't be opened."))
-        elif (error == MeshGeneratorErrors.INVALID_NO_DATA_VALUE):
-            QMessageBox.critical(self, self.tr(
-                "Invalid No Data Value"), self.tr("Please use a raster file with a defined NoDataValue (ex: -9999)."))
-        elif (error == MeshGeneratorErrors.DLL_FUNCTION_FAILED):
-            QMessageBox.critical(self, self.tr(
-                "Internal Error"), self.tr("A function call of one of the dependencies has failed."))
+    def handle_generator_error(self, error: MeshGeneratorError):
+        QMessageBox.critical(self, self.tr(
+                "Error"), self.tr(error.message))
 
     # Closes dialog window
     def close_window(self):
@@ -164,11 +149,10 @@ class WorkerObject(QtCore.QObject):
 
     @QtCore.pyqtSlot(object)
     def set_parameters(self, parameters):
-        error = self.mesh_generator.set_parameters(parameters)
-        if error != MeshGeneratorErrors.NO_ERROR:
-            self.handle_generator_error.emit(error)
-            self.finished.emit()
-            return
+        try:
+            self.mesh_generator.set_parameters(parameters)
+        except Exception as e:
+            self.handle_generator_error.emit(e)
 
     # Generates STL file on button press
     @QtCore.pyqtSlot()
@@ -176,24 +160,18 @@ class WorkerObject(QtCore.QObject):
         try:
             self.progress_changed.emit(10)
             self.progress_text.emit("%p% Reading Raster Data...")
-            error = self.mesh_generator.generate_height_array(
+            self.mesh_generator.generate_height_array(
                 source_dem=self.current_layer)
-            if error != MeshGeneratorErrors.NO_ERROR:
-                self.handle_generator_error.emit(error)
-                self.finished.emit()
-                return
 
             self.progress_changed.emit(60)
             self.progress_text.emit("%p% Putting Together STL File...")
-            error = self.mesh_generator.manually_generate_stl()
-            if error != MeshGeneratorErrors.NO_ERROR:
-                self.handle_generator_error.emit(error)
-                self.finished.emit()
-                return
+            self.mesh_generator.manually_generate_stl()
 
             self.progress_changed.emit(100)
             self.progress_text.emit("%p% Finished Generating STL File!")
         except Exception as e:
+            self.handle_generator_error.emit(e)
             self.progress_text.emit("Failed to Generate STL : " + str(e))
+            self.finished.emit()
 
         self.finished.emit()

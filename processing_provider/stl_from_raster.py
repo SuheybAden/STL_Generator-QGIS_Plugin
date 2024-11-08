@@ -10,15 +10,17 @@
 """
 
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import (QgsProcessing,
-                       QgsProcessingException,
-                       QgsProcessingAlgorithm,
-                       QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterNumber,
-                       QgsProcessingParameterFolderDestination)
+from qgis.core import (
+    QgsProcessing,
+    QgsProcessingException,
+    QgsProcessingAlgorithm,
+    QgsProcessingParameterRasterLayer,
+    QgsProcessingParameterNumber,
+    QgsProcessingParameterFolderDestination,
+)
 from qgis import processing
 
-from ..mesh_generator import MeshGenerator, MeshGeneratorErrors
+from ..mesh_generator import MeshGenerator, MeshGeneratorError
 
 import os
 
@@ -41,20 +43,20 @@ class STLFromRaster(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
 
-    INPUT = 'INPUT'
-    MODEL_HEIGHT = 'MODEL HEIGHT'
-    BASE_THICKNESS = 'BASE THICKNESS'
-    BED_WIDTH = 'BED WIDTH'
-    BED_LENGTH = 'BED LENGTH'
-    LINE_WIDTH = 'LINE WIDTH'
-    OUTPUT = 'OUTPUT'
-    SUCCESS = 'SUCCESS'
+    INPUT = "INPUT"
+    MODEL_HEIGHT = "MODEL HEIGHT"
+    BASE_THICKNESS = "BASE THICKNESS"
+    BED_WIDTH = "BED WIDTH"
+    BED_LENGTH = "BED LENGTH"
+    LINE_WIDTH = "LINE WIDTH"
+    OUTPUT = "OUTPUT"
+    SUCCESS = "SUCCESS"
 
     def tr(self, string):
         """
         Returns a translatable string with the self.tr() function.
         """
-        return QCoreApplication.translate('Processing', string)
+        return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
         return STLFromRaster()
@@ -67,21 +69,21 @@ class STLFromRaster(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'stlfromraster'
+        return "stlfromraster"
 
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return self.tr('STL from Raster')
+        return self.tr("STL from Raster")
 
     def group(self):
         """
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Raster Processing')
+        return self.tr("Raster Processing")
 
     def groupId(self):
         """
@@ -91,7 +93,7 @@ class STLFromRaster(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'rasterprocessing'
+        return "rasterprocessing"
 
     def shortHelpString(self):
         """
@@ -109,10 +111,7 @@ class STLFromRaster(QgsProcessingAlgorithm):
 
         # The input raster features source
         self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.INPUT,
-                self.tr('Input DEM layer')
-            )
+            QgsProcessingParameterRasterLayer(self.INPUT, self.tr("Input DEM layer"))
         )
 
         self.addParameter(
@@ -121,7 +120,7 @@ class STLFromRaster(QgsProcessingAlgorithm):
                 self.tr("Model Height (mm)"),
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=10.0,
-                minValue=0
+                minValue=0,
             )
         )
 
@@ -131,7 +130,7 @@ class STLFromRaster(QgsProcessingAlgorithm):
                 self.tr("Base Thickness (mm)"),
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=10.0,
-                minValue=0
+                minValue=0,
             )
         )
 
@@ -141,7 +140,7 @@ class STLFromRaster(QgsProcessingAlgorithm):
                 self.tr("Bed Width (mm)"),
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=200.0,
-                minValue=0
+                minValue=0,
             )
         )
 
@@ -151,7 +150,7 @@ class STLFromRaster(QgsProcessingAlgorithm):
                 self.tr("Bed Length (mm)"),
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=200.0,
-                minValue=0
+                minValue=0,
             )
         )
 
@@ -161,15 +160,13 @@ class STLFromRaster(QgsProcessingAlgorithm):
                 self.tr("Line Width (mm)"),
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=0.4,
-                minValue=0
+                minValue=0,
             )
         )
         # The folder destination where we'll save the generated STL
         self.addParameter(
             QgsProcessingParameterFolderDestination(
-                self.OUTPUT,
-                self.tr('Output File Destination'),
-                os.path.expanduser('~')
+                self.OUTPUT, self.tr("Output File Destination"), os.path.expanduser("~")
             )
         )
 
@@ -178,71 +175,51 @@ class STLFromRaster(QgsProcessingAlgorithm):
         Here is where the processing itself takes place.
         """
 
-        # Init the MeshGenerator used to create the STL
-        mesh_generator = MeshGenerator()
-
         # Load all the parameters
-        raster_layer = self.parameterAsRasterLayer(
-            parameters, self.INPUT, context)
+        raster_layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         dem_path = raster_layer.source()
 
-        print_height = self.parameterAsDouble(
-            parameters, self.MODEL_HEIGHT, context)
+        print_height = self.parameterAsDouble(parameters, self.MODEL_HEIGHT, context)
 
         base_thickness = self.parameterAsDouble(
-            parameters, self.BASE_THICKNESS, context)
+            parameters, self.BASE_THICKNESS, context
+        )
 
-        bed_width = self.parameterAsDouble(
-            parameters, self.BED_WIDTH, context)
+        bed_width = self.parameterAsDouble(parameters, self.BED_WIDTH, context)
 
-        bed_length = self.parameterAsDouble(
-            parameters, self.BED_LENGTH, context)
+        bed_length = self.parameterAsDouble(parameters, self.BED_LENGTH, context)
 
-        line_width = self.parameterAsDouble(
-            parameters, self.LINE_WIDTH, context)
+        line_width = self.parameterAsDouble(parameters, self.LINE_WIDTH, context)
 
-        dest_folder = self.parameterAsFile(
-            parameters, self.OUTPUT, context)
+        dest_folder = self.parameterAsFile(parameters, self.OUTPUT, context)
 
         # Construct the name of the STL's output file
-        output_filename = os.path.join(
-            dest_folder, raster_layer.name() + ".stl")
+        output_filename = os.path.join(dest_folder, raster_layer.name() + ".stl")
 
-        # Send all the parameters to the mesh generator
-        mesh_generator.set_parameters({"printHeight": print_height,
-                                       "baseHeight": base_thickness,
-                                       "saveLocation": output_filename,
-                                       "bedX": bed_width,
-                                       "bedY": bed_length,
-                                       "lineWidth": line_width
-                                       })
+        try:
+            # Init the MeshGenerator used to create the STL
+            mesh_generator = MeshGenerator()
 
-        # Preprocess the raster image
-        error = mesh_generator.generate_height_array(source_dem=dem_path)
-        if error != MeshGeneratorErrors.NO_ERROR:
-            if (error == MeshGeneratorErrors.MISSING_DLL):
-                feedback.pushWarning("DLL ERROR: Couldn't find and/or load the required DLL(s).")
-            elif (error == MeshGeneratorErrors.DEM_INACCESSIBLE):
-                feedback.pushWarning("RASTER ERROR: The selected raster file couldn't be opened.")
-            elif (error == MeshGeneratorErrors.INVALID_NO_DATA_VALUE):
-                feedback.pushWarning("INVALID NO DATA VALUE: Please use a raster file with a defined NoDataValue (ex: -9999).")
-            elif (error == MeshGeneratorErrors.DLL_FUNCTION_FAILED):
-                feedback.pushWarning("INTERNAL ERROR: A function call of one of the dependencies has failed.")
-            QgsProcessingException("Something went wrong!")
-            return {self.OUTPUT: output_filename, self.SUCCESS: False}
+            # Send all the parameters to the mesh generator
+            mesh_generator.set_parameters(
+                {
+                    "printHeight": print_height,
+                    "baseHeight": base_thickness,
+                    "saveLocation": output_filename,
+                    "bedX": bed_width,
+                    "bedY": bed_length,
+                    "lineWidth": line_width,
+                }
+            )
 
-        # Generate the STL
-        error = mesh_generator.manually_generate_stl()
-        if error != MeshGeneratorErrors.NO_ERROR:
-            if (error == MeshGeneratorErrors.MISSING_DLL):
-                feedback.pushWarning("DLL ERROR: Couldn't find and/or load the required DLL(s).")
-            elif (error == MeshGeneratorErrors.DEM_INACCESSIBLE):
-                feedback.pushWarning("RASTER ERROR: The selected raster file couldn't be opened.")
-            elif (error == MeshGeneratorErrors.INVALID_NO_DATA_VALUE):
-                feedback.pushWarning("INVALID NO DATA VALUE: Please use a raster file with a defined NoDataValue (ex: -9999).")
-            elif (error == MeshGeneratorErrors.DLL_FUNCTION_FAILED):
-                feedback.pushWarning("INTERNAL ERROR: A function call of one of the dependencies has failed.")
-            QgsProcessingException("Something went wrong!")
+            # Preprocess the raster image
+            mesh_generator.generate_height_array(source_dem=dem_path)
+
+            # Generate the STL
+            mesh_generator.manually_generate_stl()
+
+        except Exception as e:
+            feedback.pushWarning(f"{e}\n")
             return {self.OUTPUT: output_filename, self.SUCCESS: False}
 
         # Return the results of the algorithm
