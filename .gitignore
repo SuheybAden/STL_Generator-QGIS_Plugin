@@ -65,9 +65,11 @@ README.html
 
 # Log files
 *.log
+*.log.*
 
 __pycache__/
 .mypy_cache/
 .vscode/
 pylintrc
 .qt_for_python
+build/

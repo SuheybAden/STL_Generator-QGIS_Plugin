@@ -8,6 +8,7 @@ import platform
 import struct
 import sys
 import logging
+import logging.handlers
 
 import numpy as np
 from osgeo import gdal, ogr
@@ -115,9 +116,10 @@ class MeshGenerator:
         # Opens the raster file being used
         dem = gdal.Open(source_dem, gdal.GA_ReadOnly)
         if not dem:
+            self.logger.error("COULDN'T OPEN THE DEM FILE AT %s!", source_dem)
             raise InaccessibleDEMError(source_dem)
         band = dem.GetRasterBand(1)
-        self.logger.debug(f"Loaded the dem file: {source_dem}")
+        self.logger.info(f"Loaded the dem file: {source_dem}")
 
         # Check that the raster has a valid no data value
         self.noDataValue = band.GetNoDataValue()
@@ -176,6 +178,7 @@ class MeshGenerator:
         # Apply the vertical exaggeration
         self.array *= self.verticalExaggeration
         self.noDataValue *= self.verticalExaggeration
+        self.logger.info("Applied the vertical exaggeration.")
 
         self.logger.info(f"Applied the vertical exaggeration to the noDataValue. The new noDataValue is {self.noDataValue}")
 
@@ -189,13 +192,16 @@ class MeshGenerator:
                                          ctypes.c_char_p]
         self.lib.generateSTL.restype = None
 
+        self.logger.info("Creating the STL file...")
+
         try:
             self.logger.info("Sending the image data and parameters to the meshgenerator library...")
             self.lib.generateSTL(self.array.astype(np.float32), self.array.shape[0], self.array.shape[1], self.noDataValue,
                                  self.lineWidth, self.bottomLevel, bytes(self.saveLocation, 'utf-8'))
 
         except Exception as e:
-            self.logger.critical("Library function call failed!")
+            self.logger.error("Library function call failed!")
             raise DLLFunctionFailedError("generateSTL")
 
-        self.logger.info("Library function call succeeded!\n")
+        self.logger.info(
+            "Successfully created the STL file at %s.", self.saveLocation)
