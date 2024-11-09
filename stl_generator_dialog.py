@@ -34,14 +34,13 @@ from qgis.PyQt.QtWidgets import QMessageBox
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 sys.path.append(os.path.dirname(__file__))
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'stl_generator_dialog_base.ui'))
+FORM_CLASS, _ = uic.loadUiType(
+    os.path.join(os.path.dirname(__file__), "stl_generator_dialog_base.ui")
+)
 
 
 class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
-    start_signal = QtCore.pyqtSignal()
-    send_parameters = QtCore.pyqtSignal(object)
-    selected_layer = QtCore.pyqtSignal(str)
+    start_backend = QtCore.pyqtSignal(object, str)
 
     def __init__(self, parent=None):
         """Constructor."""
@@ -54,7 +53,7 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
         self.setupUi(self)
         self.start_thread()
 
-        self.saveLocation_input.setFilePath(os.path.expanduser('~'))
+        self.saveLocation_input.setFilePath(os.path.expanduser("~"))
 
         # Indicates if a background process is already running or not
         self.running = False
@@ -62,8 +61,7 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
     # Connects signals and slots between UI elements and background process
     def connect_signals(self):
         # UI related signals
-        self.generateSTL_button.clicked.connect(
-            self.begin_generating_STL)
+        self.generateSTL_button.clicked.connect(self.begin_generating_STL)
         self.exit_button.clicked.connect(self.close_window)
 
         # Background process signals
@@ -72,9 +70,7 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
         self.worker.finished.connect(self.finished_generating_STL)
         self.worker.handle_generator_error.connect(self.handle_generator_error)
 
-        self.start_signal.connect(self.worker.generate_STL)
-        self.send_parameters.connect(self.worker.set_parameters)
-        self.selected_layer.connect(self.worker.set_current_layer)
+        self.start_backend.connect(self.worker.generate_STL)
 
         # self.worker_thread.finished.connect(self.worker_thread.deleteLater)
 
@@ -95,19 +91,21 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
             self.progress.setFormat("%p% Beginning to Generate STL...")
 
             # Set the parameters for generating the STL file
-            self.send_parameters.emit({"printHeight": self.printHeight_input.value(),
-                                       "baseHeight": self.baseHeight_input.value(),
-                                       "saveLocation": os.path.join(self.saveLocation_input.filePath(
-                                       ), self.layers_comboBox.currentLayer().name() + ".stl"),
-                                       "bedX": self.bedWidth_input.value(),
-                                       "bedY": self.bedLength_input.value(),
-                                       "lineWidth": self.lineWidth_input.value()})
-
-            self.selected_layer.emit(
-                self.layers_comboBox.currentLayer().source())
-
             self.running = True
-            self.start_signal.emit()
+            self.start_backend.emit(
+                {
+                    "printHeight": self.printHeight_input.value(),
+                    "baseHeight": self.baseHeight_input.value(),
+                    "saveLocation": os.path.join(
+                        self.saveLocation_input.filePath(),
+                        self.layers_comboBox.currentLayer().name() + ".stl",
+                    ),
+                    "bedX": self.bedWidth_input.value(),
+                    "bedY": self.bedLength_input.value(),
+                    "lineWidth": self.lineWidth_input.value(),
+                },
+                self.layers_comboBox.currentLayer().source(),
+            )
 
     def finished_generating_STL(self):
         self.running = False
@@ -121,8 +119,7 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
 
     @QtCore.pyqtSlot(object)
     def handle_generator_error(self, error: MeshGeneratorError):
-        QMessageBox.critical(self, self.tr(
-                "Error"), self.tr(error.message))
+        QMessageBox.critical(self, self.tr("Error"), self.tr(error.message))
 
     # Closes dialog window
     def close_window(self):
@@ -141,27 +138,16 @@ class WorkerObject(QtCore.QObject):
         super().__init__()
         self.mesh_generator = MeshGenerator()
         self.running = False
-        self.current_layer = ""
-
-    @QtCore.pyqtSlot(str)
-    def set_current_layer(self, path):
-        self.current_layer = path
-
-    @QtCore.pyqtSlot(object)
-    def set_parameters(self, parameters):
-        try:
-            self.mesh_generator.set_parameters(parameters)
-        except Exception as e:
-            self.handle_generator_error.emit(e)
 
     # Generates STL file on button press
-    @QtCore.pyqtSlot()
-    def generate_STL(self):
+    @QtCore.pyqtSlot(object, str)
+    def generate_STL(self, parameters, path):
         try:
             self.progress_changed.emit(10)
             self.progress_text.emit("%p% Reading Raster Data...")
             self.mesh_generator.generate_height_array(
-                source_dem=self.current_layer)
+                parameters, source_dem=path
+            )
 
             self.progress_changed.emit(60)
             self.progress_text.emit("%p% Putting Together STL File...")

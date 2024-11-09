@@ -200,8 +200,8 @@ class STLFromRaster(QgsProcessingAlgorithm):
             # Init the MeshGenerator used to create the STL
             mesh_generator = MeshGenerator()
 
-            # Send all the parameters to the mesh generator
-            mesh_generator.set_parameters(
+            # Preprocess the raster image
+            mesh_generator.generate_height_array(
                 {
                     "printHeight": print_height,
                     "baseHeight": base_thickness,
@@ -209,11 +209,9 @@ class STLFromRaster(QgsProcessingAlgorithm):
                     "bedX": bed_width,
                     "bedY": bed_length,
                     "lineWidth": line_width,
-                }
+                },
+                source_dem=dem_path,
             )
-
-            # Preprocess the raster image
-            mesh_generator.generate_height_array(source_dem=dem_path)
 
             # Generate the STL
             mesh_generator.manually_generate_stl()

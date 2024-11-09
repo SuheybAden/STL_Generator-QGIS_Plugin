@@ -97,7 +97,7 @@ class MeshGenerator:
         except Exception as e:
             raise MissingDLLError(self.dll_path)
 
-    def set_parameters(self, parameters):
+    def generate_height_array(self, parameters, source_dem):
         # ***************************** USER INPUT *************************** #
         # Height of print excluding the base height (in mm)
         self.printHeight = parameters["printHeight"]
@@ -111,8 +111,6 @@ class MeshGenerator:
         self.lineWidth = parameters["lineWidth"]
 
         self.name = os.path.basename(self.saveLocation)
-
-    def generate_height_array(self, source_dem):
 
         # Opens the raster file being used
         dem = gdal.Open(source_dem, gdal.GA_ReadOnly)
