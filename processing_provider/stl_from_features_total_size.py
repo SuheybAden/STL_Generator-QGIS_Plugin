@@ -31,7 +31,7 @@ from ..mesh_generator import MeshGenerator, MeshGeneratorError
 import os
 
 
-class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
+class STLFromFeaturesTotalSize(QgsProcessingAlgorithm):
     """
     This is an example algorithm that takes a vector layer and
     creates a new identical one.
@@ -56,8 +56,6 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
     BASE_THICKNESS = "BASE THICKNESS"
     TOTAL_WIDTH = "TOTAL WIDTH"
     TOTAL_LENGTH = "TOTAL LENGTH"
-    BED_WIDTH = "BED WIDTH"
-    BED_LENGTH = "BED LENGTH"
     LINE_WIDTH = "LINE WIDTH"
     OUTPUT = "OUTPUT"
     SUCCESS = "SUCCESS"
@@ -69,7 +67,7 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
         return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
-        return SplitThenGenerateSTLs()
+        return STLFromFeaturesTotalSize()
 
     def name(self):
         """
@@ -79,21 +77,21 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "splitthengeneratestl"
+        return "stlfromfeaturessizepriority"
 
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return self.tr("Generate STL(s) from a raster split by a vector layer")
+        return self.tr("STL(s) scaled to fit total extent")
 
     def group(self):
         """
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr("Raster Processing")
+        return self.tr("Vector Processing")
 
     def groupId(self):
         """
@@ -103,7 +101,7 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "rasterprocessing"
+        return "vectorprocessing"
 
     def shortHelpString(self):
         """
@@ -112,7 +110,7 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
         parameters and outputs associated with it..
         """
         return self.tr(
-            "Generates STL(s) from a raster layer clipped by the provided vector layer"
+            "Generates STL(s) from a raster layer that is split by a vector's features. Scales the STL(s) so that they all fit within the user-provided total extent."
         )
 
     def initAlgorithm(self, config=None):
@@ -189,28 +187,6 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
             )
         )
 
-        # The bed width of the user's 3D printer
-        self.addParameter(
-            QgsProcessingParameterNumber(
-                self.BED_WIDTH,
-                self.tr("Bed Width (mm)"),
-                type=QgsProcessingParameterNumber.Double,
-                defaultValue=200.0,
-                minValue=0,
-            )
-        )
-
-        # The bed length of the user's 3D printer
-        self.addParameter(
-            QgsProcessingParameterNumber(
-                self.BED_LENGTH,
-                self.tr("Bed Length (mm)"),
-                type=QgsProcessingParameterNumber.Double,
-                defaultValue=200.0,
-                minValue=0,
-            )
-        )
-
         # The line width being used by the user's 3D printer
         self.addParameter(
             QgsProcessingParameterNumber(
@@ -253,8 +229,6 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
         base_thickness = self.parameterAsDouble(
             parameters, self.BASE_THICKNESS, context
         )
-        bed_width = self.parameterAsDouble(parameters, self.BED_WIDTH, context)
-        bed_length = self.parameterAsDouble(parameters, self.BED_LENGTH, context)
         total_width = self.parameterAsDouble(parameters, self.TOTAL_WIDTH, context)
         total_length = self.parameterAsDouble(parameters, self.TOTAL_LENGTH, context)
         line_width = self.parameterAsDouble(parameters, self.LINE_WIDTH, context)
@@ -364,7 +338,6 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
             "Started clipping the raster layer by the split vector layer.\n"
         )
 
-        bed_scale_factor = 1.0
         rasters_to_process: list[QgsRasterLayer] = []
 
         # Clip the raster file using the vector masks and
@@ -410,26 +383,8 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
                 feedback.pushInfo(f"Error: {e}")
                 return {self.SUCCESS: False, self.OUTPUT: []}
 
-            # Load the clipped raster layer and get its height and width
-            clipped_raster_layer = QgsRasterLayer(clipped_raster_filepath)
-
-            larger_bed_axis = max(bed_length, bed_width)
-            smaller_bed_axis = min(bed_length, bed_width)
-            larger_layer_axis = max(
-                clipped_raster_layer.height(), clipped_raster_layer.width()
-            )
-            smaller_layer_axis = min(
-                clipped_raster_layer.height(), clipped_raster_layer.width()
-            )
-
-            # Get the min scale factor needed to downscale the raster to fit in the print bed
-            bed_scale_factor = min(
-                bed_scale_factor,
-                (larger_bed_axis / line_width) / larger_layer_axis,
-                (smaller_bed_axis / line_width) / smaller_layer_axis,
-            )
-
             # Add the clipped raster to the list of rasters to process
+            clipped_raster_layer = QgsRasterLayer(clipped_raster_filepath)
             rasters_to_process.append(clipped_raster_layer)
 
             # Send some information to the user
@@ -460,20 +415,10 @@ class SplitThenGenerateSTLs(QgsProcessingAlgorithm):
         larger_raster_axis = max(merged_raster.height(), merged_raster.width())
         smaller_raster_axis = min(merged_raster.height(), merged_raster.width())
 
-        total_raster_scale_factor = min(
+        scale_factor = min(
             (larger_total_axis / line_width) / larger_raster_axis,
             (smaller_total_axis / line_width) / smaller_raster_axis,
         )
-
-        if total_raster_scale_factor <= bed_scale_factor:
-            scale_factor = total_raster_scale_factor
-
-        else:
-            scale_factor = bed_scale_factor
-
-            feedback.pushWarning(
-                "*** WARNING: The total height/width of the STL files will be smaller than expected so that all STLs can fit on the print bed"
-            )
 
         feedback.pushInfo(
             f"The total length and width of the models are {(merged_raster.height() * line_width) * scale_factor} mm and {(merged_raster.width() * line_width) * scale_factor} mm respectively.\n"

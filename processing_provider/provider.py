@@ -2,15 +2,17 @@ from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
 from .stl_from_raster import STLFromRaster
-from .split_then_generate_stl import SplitThenGenerateSTLs
+from .stl_from_features_total_size import STLFromFeaturesTotalSize
+from .stl_from_features_bed_size import STLFromFeaturesBedSize
 
 
 class Provider(QgsProcessingProvider):
 
     def loadAlgorithms(self, *args, **kwargs):
         self.addAlgorithm(STLFromRaster())
-        self.addAlgorithm(SplitThenGenerateSTLs())
-        
+        self.addAlgorithm(STLFromFeaturesBedSize())
+        self.addAlgorithm(STLFromFeaturesTotalSize())
+
     def id(self, *args, **kwargs):
         """The ID of your plugin, used for identifying the provider.
 
