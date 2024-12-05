@@ -99,6 +99,10 @@ class MeshGenerator:
             raise MissingDLLError(self.dll_path)
 
     def generate_height_array(self, parameters, source_dem):
+        self.logger.info(
+            f"******************************************************")
+        self.logger.info(f"Starting to process the {source_dem} raster!")
+
         # ***************************** USER INPUT *************************** #
         # Height of print excluding the base height (in mm)
         self.printHeight = parameters["printHeight"]
@@ -135,6 +139,7 @@ class MeshGenerator:
 
         self.logger.info(f"The bed size for {self.name} is {larger_bed_axis} by {smaller_bed_axis}")
 
+        # *************************** GET SCALE FACTOR FOR X AND Y AXIS *************************** #
         # Loads the x and y lengths of the raster
         larger_img_axis = max(dem.RasterXSize, dem.RasterYSize)
         smaller_img_axis = min(dem.RasterXSize, dem.RasterYSize)
@@ -146,16 +151,6 @@ class MeshGenerator:
         scalingFactor = min(1, larger_bed_axis / (self.lineWidth * larger_img_axis), smaller_bed_axis / (self.lineWidth * smaller_img_axis))
 
         self.logger.info(f"The scale factor for {self.name} is {scalingFactor}")
-
-        # Load the raster file as an array
-        self.array = band.ReadAsArray(buf_xsize=math.ceil(dem.RasterXSize * scalingFactor),
-                                      buf_ysize=math.ceil(
-                                          dem.RasterYSize * scalingFactor),
-                                      buf_type=gdal.GDT_Float32,
-                                      resample_alg=gdal.GRIORA_NearestNeighbour)
-
-        self.logger.info(f"The target STL size is {self.bedX / self.lineWidth} by {self.bedY / self.lineWidth}")
-        self.logger.info(f"The acheived STL size is {self.array.shape[0]} by {self.array.shape[1]}")
 
         # *************************** GET VERTICAL EXAGGERATION OF IMAGE *************************** #
         # Load stats from the raster image
@@ -174,6 +169,19 @@ class MeshGenerator:
         self.logger.info(f"The vertical exaggeration is {self.verticalExaggeration}.")
         self.logger.info(f"The new minimum and maximum values of the raster are {minValue * self.verticalExaggeration} and {maxValue * self.verticalExaggeration} respectively.")
         self.logger.info(f"The bottom level of the model is {self.bottomLevel}.")
+
+        # *************************** APPLY THE SCALE FACTOR AND VERTICAL EXAGGERATION *************************** #
+        # Load the raster file as an array
+        self.array = band.ReadAsArray(buf_xsize=math.ceil(dem.RasterXSize * scalingFactor),
+                                      buf_ysize=math.ceil(
+                                          dem.RasterYSize * scalingFactor),
+                                      buf_type=gdal.GDT_Float64,
+                                      resample_alg=gdal.GRIORA_NearestNeighbour)
+
+        self.logger.info(
+            f"The target STL size is {self.bedX / self.lineWidth} by {self.bedY / self.lineWidth}")
+        self.logger.info(
+            f"The acheived STL size is {self.array.shape[0]} by {self.array.shape[1]}")
 
         # Apply the vertical exaggeration
         self.array *= self.verticalExaggeration
