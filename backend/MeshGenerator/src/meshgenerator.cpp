@@ -13,15 +13,13 @@ struct Parameters
     float bottomLevel;
     unsigned int numTriangles;
     float* v;
-    const char* filename;
+    const char *filename;
 };
 
 MESHGENERATOR_EXPORT void generateSTL(float* v, int width, int height, float noDataValue,
                                    float lineWidth, float bottomLevel, const char* filename)
 {
-    struct Parameters p = { width, height, noDataValue, lineWidth, bottomLevel, 0, v, filename};
-
-    unsigned char header[80] = { 0 };
+    struct Parameters p = {width, height, noDataValue, lineWidth, bottomLevel, 0, v, filename};
 
     // Open STL file that will be written to
     std::ofstream file (p.filename, std::ios::out | std::ios::binary | std::ios::trunc);
@@ -30,49 +28,60 @@ MESHGENERATOR_EXPORT void generateSTL(float* v, int width, int height, float noD
     }
 
     // Write the placeholder values for the header and number of triangles
+    unsigned char header[80] = {0};
     file.write((char*)header, sizeof(header));
     file.write((char *)&p.numTriangles, sizeof(p.numTriangles));
 
     // Iterate through each point in the array and determine what triangles need to be written
-    for (float x = 0; x < width - 1; x++) {
-        for (float y = 0; y < height - 1; y++) {
-            // Write top left triangle if it exists
-            if (getArrayValue(x, y, p) != noDataValue &&
-                getArrayValue(x + 1, y, p) != noDataValue &&
-                getArrayValue(x, y + 1, p) != noDataValue) {
-                // Write top and bottom faces
-                float topLeftFace[3][3] = { {x, y, getArrayValue(x, y, p)},
-                                           {x + 1, y, getArrayValue(x + 1, y, p)},
-                                           {x, y + 1, getArrayValue(x, y + 1, p)} };
-                float topLeftFace_bottom[3][3] = { {x, y, bottomLevel},
-                                                  {x + 1, y, bottomLevel},
-                                                  {x, y + 1, bottomLevel} };
-                writeFace(topLeftFace, p, file);
-                writeFace(topLeftFace_bottom, p, file);
-
-                // Write side faces
-                addSideFace(x, y, x + 1, y, p, file);
-                addSideFace(x, y, x, y + 1, p, file);
-                addSideFace(x + 1, y, x, y + 1, p, file);
+    for (int x = 0; x < width - 1; x++)
+    {
+        for (int y = 0; y < height - 1; y++)
+        {
+            if (getArrayValue(x + 1, y, p) != noDataValue &&
+                getArrayValue(x, y + 1, p) != noDataValue)
+            {
+                // Write top left triangle if it exists
+                if (getArrayValue(x, y, p) != noDataValue)
+                {
+                    int section[3][2] = {
+                        {x + 1, y},
+                        {x, y + 1},
+                        {x, y}};
+                    writeSection(section, p, file);
+                }
+                // Write bottom right triangle if it exists
+                if (getArrayValue(x + 1, y + 1, p) != noDataValue)
+                {
+                    int section[3][2] = {
+                        {x + 1, y},
+                        {x, y + 1},
+                        {x + 1, y + 1}};
+                    writeSection(section, p, file);
+                }
             }
-            // Write bottom right triangle if it exists
-            if (getArrayValue(x + 1, y + 1, p) != noDataValue &&
-                getArrayValue(x + 1, y, p) != noDataValue &&
-                getArrayValue(x, y + 1, p) != noDataValue) {
-                // Write top and bottom faces
-                float bottomRightFace[3][3] = { {x + 1, y + 1, getArrayValue(x + 1, y + 1, p)},
-                                               {x, y + 1, getArrayValue(x, y + 1, p)},
-                                               {x + 1, y, getArrayValue(x + 1, y, p)} };
-                float bottomRightFace_bottom[3][3] = { {x + 1, y + 1, bottomLevel},
-                                                      {x, y + 1, bottomLevel},
-                                                      {x + 1, y, bottomLevel} };
-                writeFace(bottomRightFace, p, file);
-                writeFace(bottomRightFace_bottom, p, file);
 
-                // Write side faces
-                addSideFace(x + 1, y + 1, x + 1, y, p, file);
-                addSideFace(x + 1, y + 1, x, y + 1, p, file);
-                addSideFace(x + 1, y, x, y + 1, p, file);
+            else if (getArrayValue(x, y, p) != noDataValue &&
+                     getArrayValue(x + 1, y + 1, p) != noDataValue)
+            {
+                // Write the top right triangle if it exists
+                if (getArrayValue(x + 1, y, p) != noDataValue)
+                {
+                    int section[3][2] = {
+                        {x + 1, y + 1},
+                        {x, y},
+                        {x + 1, y}};
+                    writeSection(section, p, file);
+                }
+
+                // Write the bottom left triangle if it exists
+                else if (getArrayValue(x, y + 1, p) != noDataValue)
+                {
+                    int section[3][2] = {
+                        {x + 1, y + 1},
+                        {x, y},
+                        {x, y + 1}};
+                    writeSection(section, p, file);
+                }
             }
         }
     }
@@ -89,7 +98,25 @@ float getArrayValue(int xIndex, int yIndex, Parameters p) {
     return p.v[index];
 }
 
-void writeFace(float vertices[3][3], Parameters& p, std::ofstream& file)
+void writeSection(int vertices[3][2], Parameters &p, std::ofstream &file)
+{
+    // Write the top and bottom faces
+    float topFace[3][3] = {{vertices[0][0], vertices[0][1], getArrayValue(vertices[0][0], vertices[0][1], p)},
+                           {vertices[1][0], vertices[1][1], getArrayValue(vertices[1][0], vertices[1][1], p)},
+                           {vertices[2][0], vertices[2][1], getArrayValue(vertices[2][0], vertices[2][1], p)}};
+    float bottomFace[3][3] = {{vertices[0][0], vertices[0][1], p.bottomLevel},
+                              {vertices[1][0], vertices[1][1], p.bottomLevel},
+                              {vertices[2][0], vertices[2][1], p.bottomLevel}};
+    writeFace(topFace, p, file);
+    writeFace(bottomFace, p, file);
+
+    // Write side faces
+    addSideFace(vertices[0][0], vertices[0][1], vertices[1][0], vertices[1][1], p, file);
+    addSideFace(vertices[0][0], vertices[0][1], vertices[2][0], vertices[2][1], p, file);
+    addSideFace(vertices[1][0], vertices[1][1], vertices[2][0], vertices[2][1], p, file);
+}
+
+void writeFace(float vertices[3][3], Parameters &p, std::ofstream &file)
 {
     // Increment count of triangles
     p.numTriangles++;
