@@ -447,7 +447,7 @@ class STLFromFeaturesTotalSize(QgsProcessingAlgorithm):
                 "stl_generator:stlfromraster",
                 {
                     "INPUT": clipped_raster_layer.source(),
-                    "MODEL_HEIGHT": print_height,
+                    "MODEL HEIGHT": print_height,
                     "BASE THICKNESS": base_thickness,
                     "BED WIDTH": width,
                     "BED LENGTH": height,
