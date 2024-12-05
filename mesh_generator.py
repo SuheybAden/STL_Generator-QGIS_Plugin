@@ -144,15 +144,16 @@ class MeshGenerator:
         larger_img_axis = max(dem.RasterXSize, dem.RasterYSize)
         smaller_img_axis = min(dem.RasterXSize, dem.RasterYSize)
 
-        self.logger.info(f"The image size is {larger_img_axis} by {smaller_img_axis}")
+        self.logger.info(
+            f"The raster's size is {larger_img_axis} by {smaller_img_axis}")
 
-        # Gets the scaling factor needed to preserve the image ratio
+        # Gets the scaling factor needed to preserve the raster's ratio
         # while not going over the maximum resolutions of the printer
         scalingFactor = min(1, larger_bed_axis / (self.lineWidth * larger_img_axis), smaller_bed_axis / (self.lineWidth * smaller_img_axis))
 
         self.logger.info(f"The scale factor for {self.name} is {scalingFactor}")
 
-        # *************************** GET VERTICAL EXAGGERATION OF IMAGE *************************** #
+        # *************************** GET VERTICAL EXAGGERATION FOR RASTER *************************** #
         # Load stats from the raster image
         minValue = band.GetMinimum()
         maxValue = band.GetMaximum()
@@ -162,12 +163,13 @@ class MeshGenerator:
         self.logger.info(f"The minimum and maximum values of the raster are {minValue} and {maxValue} respectively.")
 
         # Calculate the vertical exaggeration
-        self.verticalExaggeration = self.printHeight / (self.lineWidth * (maxValue - minValue))
+        self.verticalExaggeration = self.printHeight / (maxValue - minValue)
         self.bottomLevel = (
-            minValue * self.verticalExaggeration) - (self.baseHeight / self.lineWidth)
+            minValue * self.verticalExaggeration) - (self.baseHeight)
 
         self.logger.info(f"The vertical exaggeration is {self.verticalExaggeration}.")
-        self.logger.info(f"The new minimum and maximum values of the raster are {minValue * self.verticalExaggeration} and {maxValue * self.verticalExaggeration} respectively.")
+        self.logger.info(
+            f"The new minimum and maximum values of the raster are {minValue * self.verticalExaggeration} and {maxValue * self.verticalExaggeration} respectively and the difference between the two is {(maxValue * self.verticalExaggeration) - (minValue * self.verticalExaggeration)}.")
         self.logger.info(f"The bottom level of the model is {self.bottomLevel}.")
 
         # *************************** APPLY THE SCALE FACTOR AND VERTICAL EXAGGERATION *************************** #
@@ -179,16 +181,21 @@ class MeshGenerator:
                                       resample_alg=gdal.GRIORA_NearestNeighbour)
 
         self.logger.info(
-            f"The target STL size is {self.bedX / self.lineWidth} by {self.bedY / self.lineWidth}")
+            f"The target raster size is {self.bedX / self.lineWidth} by {self.bedY / self.lineWidth}.")
         self.logger.info(
-            f"The acheived STL size is {self.array.shape[0]} by {self.array.shape[1]}")
+            f"The final raster size is {self.array.shape[0]} by {self.array.shape[1]}.")
 
         # Apply the vertical exaggeration
-        self.array *= self.verticalExaggeration
-        self.noDataValue *= self.verticalExaggeration
-        self.logger.info("Applied the vertical exaggeration.")
-
-        self.logger.info(f"Applied the vertical exaggeration to the noDataValue. The new noDataValue is {self.noDataValue}")
+        if (self.verticalExaggeration == 0.0):
+            self.array = np.where(
+                self.array != self.noDataValue, 0, self.array)
+            self.logger.info(
+                "The vertical exaggeration is 0 so the resulting STL will have a flat surface!")
+        else:
+            self.array *= self.verticalExaggeration
+            self.noDataValue *= self.verticalExaggeration
+            self.logger.info(
+                f"Applied the vertical exaggeration to the noDataValue. The new noDataValue is {self.noDataValue}")
 
     # Function for manually generating STL
     def manually_generate_stl(self):
@@ -203,7 +210,8 @@ class MeshGenerator:
         self.logger.info("Creating the STL file...")
 
         try:
-            self.logger.info("Sending the image data and parameters to the meshgenerator library...")
+            self.logger.info(
+                "Sending the raster data and parameters to the meshgenerator library...")
             self.lib.generateSTL(self.array.astype(np.float32), self.array.shape[0], self.array.shape[1], self.noDataValue,
                                  self.lineWidth, self.bottomLevel, bytes(self.saveLocation, 'utf-8'))
 

@@ -19,6 +19,7 @@ set_target_properties(MeshGenerator
 
 target_compile_definitions(MeshGenerator PRIVATE MESHGENERATOR_LIBRARY)
 
+include(GNUInstallDirs)
 install(TARGETS MeshGenerator
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
