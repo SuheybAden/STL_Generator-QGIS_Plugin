@@ -23,7 +23,7 @@ echo ""
 echo "----------------------------------------------------------------"
 echo "BUILDING THE PROJECT..."
 echo "----------------------------------------------------------------"
-cmake --build $build_dir
+cmake --build $build_dir --config Release
 
 # Install project
 echo ""
