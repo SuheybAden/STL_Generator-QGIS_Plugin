@@ -117,6 +117,8 @@ class MeshGenerator:
 
         self.name = os.path.basename(self.saveLocation)
 
+        gdal.DontUseExceptions()
+
         # Opens the raster file being used
         dem = gdal.Open(source_dem, gdal.GA_ReadOnly)
         if not dem:
