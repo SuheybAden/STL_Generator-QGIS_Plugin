@@ -6,7 +6,7 @@
 name=STL Generator
 qgisMinimumVersion=3.0
 description=Generate STLs for 3D printing
-version=1.0.0
+version=1.1.0
 author=Suheyb Aden
 email=suheyb1@gmail.com
 
@@ -20,10 +20,10 @@ repository=https://github.com/SuheybAden/STL_Generator-QGIS_Plugin
 
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
-changelog= Added a processing plugin
-			Added Linux support
-			Improved error message boxes
-			Better performance with larger raster files
+changelog= Added new processing algorithms
+			Improved the dimensional accuracy of the final STL(s)
+			Fixed bug with excluding no data regions from the STL(s)
+			Improved log messages
 
 
 # Tags are comma separated with spaces allowed
