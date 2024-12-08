@@ -102,6 +102,9 @@ class MeshGenerator:
         # ***************************** USER INPUT *************************** #
         # Height of print excluding the base height (in mm)
         self.printHeight = parameters["printHeight"]
+        
+        userVerticalExaggeration = parameters["userVerticalExaggeration"]
+        
         # Height of extruded base (in mm)
         self.baseHeight = parameters["baseHeight"]
         self.saveLocation = parameters["saveLocation"]
@@ -163,16 +166,23 @@ class MeshGenerator:
         maxValue = band.GetMaximum()
         if not minValue or not maxValue:
             (minValue, maxValue) = band.ComputeRasterMinMax(True)
+            self.logger.info(f"The minimum and maximum values of the raster are {minValue} and {maxValue} respectively.")
 
-        self.logger.info(f"The minimum and maximum values of the raster are {minValue} and {maxValue} respectively.")
+        # Use the user's vertical exaggeration if provided
+        if userVerticalExaggeration != 0.0:
+            self.logger.info(f"Using the vertical exaggeration provided by the user: x{userVerticalExaggeration}")
+            self.verticalExaggeration = userVerticalExaggeration * scalingFactor
 
-        # Calculate the vertical exaggeration
-        self.verticalExaggeration = self.printHeight / (self.lineWidth * (maxValue - minValue))
+        # Otherwise calculate the vertical exaggeration based on the target model height
+        else:
+            self.verticalExaggeration = self.printHeight / (self.lineWidth * (maxValue - minValue))
+            self.logger.info(f"The calculated vertical exaggeration is {self.verticalExaggeration}.")
+
+        self.logger.info(f"The new minimum and maximum values of the raster are {minValue * self.verticalExaggeration} and {maxValue * self.verticalExaggeration} respectively.")
+
+        # Get the location of the bottom level of the model
         self.bottomLevel = (
             minValue * self.verticalExaggeration) - (self.baseHeight / self.lineWidth)
-
-        self.logger.info(f"The vertical exaggeration is {self.verticalExaggeration}.")
-        self.logger.info(f"The new minimum and maximum values of the raster are {minValue * self.verticalExaggeration} and {maxValue * self.verticalExaggeration} respectively.")
         self.logger.info(f"The bottom level of the model is {self.bottomLevel}.")
 
         # Apply the vertical exaggeration

@@ -62,6 +62,7 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
     def connect_signals(self):
         # UI related signals
         self.generateSTL_button.clicked.connect(self.begin_generating_STL)
+        self.verticalExaggeration_checkBox.stateChanged.connect(self.vertical_exaggeration_checkbox_changed)
         self.exit_button.clicked.connect(self.close_window)
 
         # Background process signals
@@ -90,11 +91,16 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
             self.progress.setValue(0)
             self.progress.setFormat("%p% Beginning to Generate STL...")
 
+            userVerticalExaggeration = 0.0
+            if (self.verticalExaggeration_checkBox.isChecked()):
+                userVerticalExaggeration = self.verticalExaggeration_input.value()
+
             # Set the parameters for generating the STL file
             self.running = True
             self.start_backend.emit(
                 {
                     "printHeight": self.printHeight_input.value(),
+                    "userVerticalExaggeration": userVerticalExaggeration,
                     "baseHeight": self.baseHeight_input.value(),
                     "saveLocation": os.path.join(
                         self.saveLocation_input.filePath(),
@@ -106,6 +112,19 @@ class STLGeneratorDialog(QtWidgets.QDialog, FORM_CLASS):
                 },
                 self.layers_comboBox.currentLayer().source(),
             )
+
+    @QtCore.pyqtSlot(int)
+    def vertical_exaggeration_checkbox_changed(self, state):
+        if (state):
+            self.verticalExaggeration_input.setEnabled(True)
+            self.verticalExaggeration_label.setEnabled(True)
+            self.printHeight_input.setEnabled(False)
+            self.printHeight_label.setEnabled(False)
+        else:
+            self.verticalExaggeration_input.setEnabled(False)
+            self.verticalExaggeration_label.setEnabled(False)
+            self.printHeight_input.setEnabled(True)
+            self.printHeight_label.setEnabled(True)
 
     def finished_generating_STL(self):
         self.running = False
