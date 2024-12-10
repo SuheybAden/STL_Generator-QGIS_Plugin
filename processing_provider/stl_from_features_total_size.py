@@ -416,6 +416,7 @@ class STLFromFeaturesTotalSize(QgsProcessingAlgorithm):
         smaller_raster_axis = min(merged_raster.height(), merged_raster.width())
 
         scale_factor = min(
+            1,
             (larger_total_axis / line_width) / larger_raster_axis,
             (smaller_total_axis / line_width) / smaller_raster_axis,
         )
