@@ -251,18 +251,17 @@ class STLFromFeaturesTotalSize(QgsProcessingAlgorithm):
         
         feedback.pushInfo("Getting the no data value of the raster layer...")
 
-        if not orig_raster_layer.dataProvider().sourceHasNoDataValue(1):
+        no_data_value = orig_raster_layer.dataProvider().sourceHasNoDataValue(1)
+        if not no_data_value:
             feedback.pushWarning(
-                "The given raster layer doesn't have a no data value! Setting the no data value to the default of -9999.\n"
+                "The given raster layer doesn't have a no data value! Assuming the no data value is -9999.\n"
             )
-            if not orig_raster_layer.dataProvider().setNoDataValue(1, -9999):
-                feedback.pushWarning("ERROR: Failed to set the no data value!")
-                return {self.SUCCESS: False, self.OUTPUT: []}
-            orig_raster_layer.reload()
+            no_data_value = -9999
 
-        feedback.pushInfo(
-            f"NoDataValue = {orig_raster_layer.dataProvider().sourceNoDataValue(1)}\n"
-        )
+        else:
+            feedback.pushInfo(
+                f"No Data Value = {no_data_value}\n"
+            )
 
 
         feedback.pushInfo(
@@ -373,7 +372,7 @@ class STLFromFeaturesTotalSize(QgsProcessingAlgorithm):
                         "TARGET_CRS": mask_layer.crs(),
                         "TARGET_EXTENT": f"{overlap.xMinimum()}, {overlap.xMaximum()}, {overlap.yMinimum()}, {overlap.yMaximum()}",
                         "MULTITHREADING": True,
-                        "NODATA": orig_raster_layer.dataProvider().sourceNoDataValue(1),
+                        "NODATA": no_data_value,
                         # "KEEP_RESOLUTION": True,
                         "OUTPUT": clipped_raster_filepath,
                     },
@@ -401,7 +400,8 @@ class STLFromFeaturesTotalSize(QgsProcessingAlgorithm):
             "***********************************************************************"
         )
 
-        feedback.pushInfo("Getting the total extent of the clipped rasters...")
+        feedback.pushInfo(
+            "Getting the total height and width of the clipped rasters...")
 
         # Merge all the relevant raster files together
         output = processing.run(
