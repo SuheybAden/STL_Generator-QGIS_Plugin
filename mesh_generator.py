@@ -240,6 +240,11 @@ class MeshGenerator:
         return triangles
 
     def python_write_stl(self):
+        # Transpose the array to flip it along its diagonal
+        # Needed b/c the generated STL will be flipped along its down diagonal otherwise
+        # NOTE: This is a temporary solution. Should look into a way of avoiding having to do this
+        self.array = self.array.T
+
         # A vertex in the array is valid if it's not equal to the noDataValue
         valid_vertices = self.array != self.noDataValue
 
