@@ -84,6 +84,13 @@ class MeshGenerator:
         self.bottomLevel = -100
         self.numTriangles = 0
 
+        # Define the numpy data type for the STL triangles
+        self.triangle_dtype = np.dtype([
+            ("normal",  np.float32, (3,)),
+            ("vertices", np.float32, (3,3,)),
+            ("attr",    np.uint16),
+        ], align=False)
+
         # Get the DLL path(s)
         if platform.system() == "Windows":
             self.dll_path = os.path.join(os.path.dirname(
@@ -211,15 +218,286 @@ class MeshGenerator:
 
         self.logger.info("Creating the STL file...")
 
-        try:
-            self.logger.info(
-                "Sending the raster data and parameters to the meshgenerator library...")
-            self.lib.generateSTL(self.array.astype(np.float32), self.array.shape[0], self.array.shape[1], self.noDataValue,
-                                 self.lineWidth, self.bottomLevel, bytes(self.saveLocation, 'utf-8'))
+        self.python_write_stl()
 
-        except Exception as e:
-            self.logger.error("Library function call failed!")
-            raise DLLFunctionFailedError("generateSTL")
+        # try:
+        #     self.logger.info(
+        #         "Sending the raster data and parameters to the meshgenerator library...")
+        #     self.lib.generateSTL(self.array.astype(np.float32), self.array.shape[0], self.array.shape[1], self.noDataValue,
+        #                          self.lineWidth, self.bottomLevel, bytes(self.saveLocation, 'utf-8'))
+
+        # except Exception as e:
+        #     self.logger.error("Library function call failed!")
+        #     raise DLLFunctionFailedError("generateSTL")
 
         self.logger.info(
             "Successfully created the STL file at %s.", self.saveLocation)
+
+    def make_triangles(self, vertices):
+        triangles = np.empty(len(vertices), dtype=self.triangle_dtype)
+        triangles["vertices"] = vertices
+        triangles["attr"] = 0
+        return triangles
+
+    def python_write_stl(self):
+        # A vertex in the array is valid if it's not equal to the noDataValue
+        valid_vertices = self.array != self.noDataValue
+
+        # Make 4 vertex arrays which tell whether the vertex for that cell is valid or not
+        top_left_vertices = valid_vertices[:-1, :-1]
+        bottom_left_vertices = valid_vertices[1:, :-1]
+        top_right_vertices = valid_vertices[:-1, 1:]
+        bottom_right_vertices = valid_vertices[1:, 1:]
+
+        # Get all of the surface/floor triangles in the array
+        top_left_triangles = top_left_vertices & bottom_left_vertices & top_right_vertices
+        bottom_right_triangles = bottom_left_vertices & top_right_vertices & bottom_right_vertices
+        
+        is_orientation_2 = ~(top_left_triangles & bottom_right_triangles)
+
+        bottom_left_triangles = is_orientation_2 & (top_left_vertices & bottom_right_vertices & bottom_left_vertices)
+        top_right_triangles = is_orientation_2 & (top_left_vertices & bottom_right_vertices & top_right_vertices)
+
+        # Get all of the triangle edges in the array
+        has_left_edge = (top_left_triangles | bottom_left_triangles)
+        has_right_edge = (top_right_triangles | bottom_right_triangles)
+        has_top_edge = (top_left_triangles | top_right_triangles)
+        has_bottom_edge = (bottom_left_triangles | bottom_right_triangles)
+
+        # Determine if one of the edges of a triangle is also a wall
+        # A wall only occurs if there is only valid triangle on one side of the edge
+        has_left_wall = np.copy(has_left_edge)
+        has_left_wall[:, 1:] = has_left_edge[:, 1:] & (~has_right_edge[:, :-1])
+
+        has_right_wall = np.copy(has_right_edge)
+        has_right_wall[:, :-1] = has_right_edge[:, :-1] & (~has_left_edge[:, 1:])
+
+        has_top_wall = np.copy(has_top_edge)
+        has_top_wall[1:, :] = has_top_edge[1:, :] & (~has_bottom_edge[:-1, :])
+
+        has_bottom_wall = np.copy(has_bottom_edge)
+        has_bottom_wall[:-1, :] = has_bottom_edge[:-1, :] & (~has_top_edge[1:, :])
+
+        has_up_diag_wall = top_left_triangles ^ bottom_right_triangles
+
+        has_down_diag_wall = bottom_left_triangles ^ top_right_triangles
+
+        # Write all of the triangles for the STL into a numpy array
+
+
+        y, x = np.where(top_left_triangles)
+
+        bottom = np.full(len(y), self.bottomLevel, dtype=np.float32)
+
+        top_left_portion_surface = self.make_triangles(np.stack([
+                                                np.column_stack([x.astype(np.float32), y.astype(np.float32), self.array[y, x].astype(np.float32)]),
+                                                np.column_stack([(x + 1).astype(np.float32), y.astype(np.float32), self.array[y, x + 1].astype(np.float32)]),
+                                                np.column_stack([x.astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x].astype(np.float32)]),
+                                                ],
+                                                axis=1))
+        top_left_portion_floor = self.make_triangles(np.stack([
+                                                np.column_stack([x.astype(np.float32), y.astype(np.float32), bottom]),
+                                                np.column_stack([x.astype(np.float32), (y + 1).astype(np.float32), bottom]), 
+                                                np.column_stack([(x + 1).astype(np.float32), y.astype(np.float32), bottom]),
+                                                ],
+                                                axis=1))
+
+        # Calculate all of the bottom right triangles for the surface and floor portions of the STL
+        y, x = np.where(bottom_right_triangles)
+
+        bottom = np.full(len(y), self.bottomLevel, dtype=np.float32)
+
+        bottom_right_portion_surface = self.make_triangles(np.stack([
+                                                    np.column_stack([(x + 1).astype(np.float32), y.astype(np.float32), self.array[y, x + 1].astype(np.float32)]),
+                                                    np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x + 1].astype(np.float32)]),
+                                                    np.column_stack([x.astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x].astype(np.float32)]),
+                                                    ],
+                                                    axis=1))
+        bottom_right_portion_floor = self.make_triangles(np.stack([
+                                                    np.column_stack([(x + 1).astype(np.float32), y.astype(np.float32), bottom]),
+                                                    np.column_stack([x.astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                    np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                    ],
+                                                    axis=1))
+
+        # Calculate all of the bottom left triangles for the surface and floor portions of the STL
+        y, x = np.where(bottom_left_triangles)
+
+        bottom = np.full(len(y), self.bottomLevel, dtype=np.float32)
+
+        bottom_left_portion_surface = self.make_triangles(np.stack([
+                                                    np.column_stack([(x).astype(np.float32), (y).astype(np.float32), self.array[y, x].astype(np.float32)]),
+                                                    np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x + 1].astype(np.float32)]),
+                                                    np.column_stack([x.astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x].astype(np.float32)]),
+                                                    ],
+                                                    axis=1))
+        bottom_left_portion_floor = self.make_triangles(np.stack([
+                                                    np.column_stack([(x).astype(np.float32), (y).astype(np.float32), bottom]),
+                                                    np.column_stack([x.astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                    np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                    ],
+                                                    axis=1))
+
+        # Calculate all of the top right triangles for the surface and floor portions of the STL
+        y, x = np.where(top_right_triangles)
+
+        bottom = np.full(len(y), self.bottomLevel, dtype=np.float32)
+
+        top_right_portion_surface = self.make_triangles(np.stack([
+                                                np.column_stack([(x + 1).astype(np.float32), y.astype(np.float32), self.array[y, x + 1].astype(np.float32)]),
+                                                np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x + 1].astype(np.float32)]),
+                                                np.column_stack([x.astype(np.float32), (y).astype(np.float32), self.array[y, x].astype(np.float32)]),
+                                                ],
+                                                axis=1))
+        top_right_portion_floor = self.make_triangles(np.stack([
+                                                np.column_stack([(x + 1).astype(np.float32), y.astype(np.float32), bottom]),
+                                                np.column_stack([x.astype(np.float32), (y).astype(np.float32), bottom]),
+                                                np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                ],
+                                                axis=1))
+
+        # Write all of the wall triangles into a numpy array
+
+        y, x = np.where(has_left_wall)
+        bottom = np.full(len(y), self.bottomLevel, dtype=np.float32)
+
+        left_wall_1 = self.make_triangles(np.stack([
+                                                np.column_stack([(x).astype(np.float32), y.astype(np.float32), self.array[y, x].astype(np.float32)]),
+                                                np.column_stack([(x).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                np.column_stack([x.astype(np.float32), (y).astype(np.float32), bottom]),
+                                                ],
+                                                axis=1))
+        left_wall_2 = self.make_triangles(np.stack([
+                                                np.column_stack([(x).astype(np.float32), y.astype(np.float32), self.array[y, x].astype(np.float32)]),
+                                                np.column_stack([x.astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x].astype(np.float32)]),
+                                                np.column_stack([(x).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                ],
+                                                axis=1))
+
+        y, x = np.where(has_right_wall)
+        bottom = np.full(len(y), self.bottomLevel, dtype=np.float32)
+
+        right_wall_1 = self.make_triangles(np.stack([
+                                                np.column_stack([(x + 1).astype(np.float32), y.astype(np.float32), self.array[y, x + 1].astype(np.float32)]),
+                                                np.column_stack([(x + 1).astype(np.float32), (y).astype(np.float32), bottom]),
+                                                np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                ],
+                                                axis=1))
+        right_wall_2 = self.make_triangles(np.stack([
+                                                np.column_stack([(x + 1).astype(np.float32), y.astype(np.float32), self.array[y, x + 1].astype(np.float32)]),
+                                                np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x + 1].astype(np.float32)]),
+                                                ],
+                                                axis=1))
+
+        y, x = np.where(has_top_wall)
+        bottom = np.full(len(y), self.bottomLevel, dtype=np.float32)
+
+        top_wall_1 = self.make_triangles(np.stack([
+                                            np.column_stack([(x).astype(np.float32), y.astype(np.float32), self.array[y, x].astype(np.float32)]),
+                                            np.column_stack([(x).astype(np.float32), (y).astype(np.float32), bottom]),
+                                            np.column_stack([(x + 1).astype(np.float32), (y).astype(np.float32), bottom]),
+                                        ],
+                                        axis=1))
+        top_wall_2 = self.make_triangles(np.stack([
+                                            np.column_stack([(x).astype(np.float32), y.astype(np.float32), self.array[y, x].astype(np.float32)]),
+                                            np.column_stack([(x + 1).astype(np.float32), (y).astype(np.float32), bottom]),
+                                            np.column_stack([(x + 1).astype(np.float32), (y).astype(np.float32), self.array[y, x + 1].astype(np.float32)]),
+                                        ],
+                                        axis=1))
+
+        y, x = np.where(has_bottom_wall)
+        bottom = np.full(len(y), self.bottomLevel, dtype=np.float32)
+
+        bottom_wall_1 = self.make_triangles(np.stack([
+                                                np.column_stack([(x).astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x].astype(np.float32)]),
+                                                np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                np.column_stack([(x).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                            ],
+                                            axis=1))
+        bottom_wall_2 = self.make_triangles(np.stack([
+                                                np.column_stack([(x).astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x].astype(np.float32)]),
+                                                np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x + 1].astype(np.float32)]),
+                                                np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                            ],
+                                            axis=1))
+
+        y, x = np.where(has_up_diag_wall)
+        bottom = np.full(len(y), self.bottomLevel, dtype=np.float32)
+
+        up_diag_wall_1 = self.make_triangles(np.stack([
+                                                np.column_stack([(x + 1).astype(np.float32), y.astype(np.float32), self.array[y, x + 1].astype(np.float32)]),
+                                                np.column_stack([x.astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x].astype(np.float32)]),
+                                                np.column_stack([x.astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                ],
+                                                axis=1))
+        up_diag_wall_2 = self.make_triangles(np.stack([
+                                                np.column_stack([(x + 1).astype(np.float32), y.astype(np.float32), self.array[y, x + 1].astype(np.float32)]),
+                                                np.column_stack([x.astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                                np.column_stack([(x + 1).astype(np.float32), (y).astype(np.float32), bottom]),
+                                                ],
+                                                axis=1))
+
+        y, x = np.where(has_down_diag_wall)
+        bottom = np.full(len(y), self.bottomLevel, dtype=np.float32)
+
+        down_diag_wall_1 = self.make_triangles(np.stack([
+                                            np.column_stack([(x).astype(np.float32), (y).astype(np.float32), self.array[y, x].astype(np.float32)]),
+                                            np.column_stack([x.astype(np.float32), (y).astype(np.float32), bottom]),
+                                            np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                            ],
+                                            axis=1))
+        down_diag_wall_2 = self.make_triangles(np.stack([
+                                            np.column_stack([(x).astype(np.float32), (y).astype(np.float32), self.array[y, x].astype(np.float32)]),
+                                            np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), bottom]),
+                                            np.column_stack([(x + 1).astype(np.float32), (y + 1).astype(np.float32), self.array[y + 1, x + 1].astype(np.float32)]),
+                                            ],
+                                            axis=1))
+
+        # Combine all the triangle arrays
+
+        triangles = np.concatenate([
+            top_left_portion_surface, top_left_portion_floor,
+            bottom_right_portion_surface, bottom_right_portion_floor,
+            bottom_left_portion_surface, bottom_left_portion_floor,
+            top_right_portion_surface, top_right_portion_floor,
+            left_wall_1, left_wall_2,
+            right_wall_1, right_wall_2,
+            top_wall_1, top_wall_2,
+            bottom_wall_1, bottom_wall_2,
+            up_diag_wall_1, up_diag_wall_2,
+            down_diag_wall_1, down_diag_wall_2,
+        ])
+
+        # Calculate normals
+        v0 = triangles["vertices"][:, 0]
+        v1 = triangles["vertices"][:, 1]
+        v2 = triangles["vertices"][:, 2]
+
+        edge1 = v1 - v0
+        edge2 = v2 - v0
+
+        normals = np.cross(edge1, edge2)
+
+        lengths = np.linalg.norm(normals, axis=1)
+
+        valid = lengths > 0
+        normals[valid] /= lengths[valid, None]
+
+        triangles["normal"] = normals
+
+        # Scale by line width
+        triangles["vertices"][:, :, 0] *= self.lineWidth
+        triangles["vertices"][:, :, 1] *= self.lineWidth
+
+        # Write the STL file
+        with open(self.saveLocation, "wb") as f:
+            # Write the header of the binary STL
+            f.write(b"\0" * 80)
+
+            # Write in the number of triangles
+            f.write(np.uint32(len(triangles)).tobytes())
+            
+            # Write in the surface faces
+            f.write(triangles.tobytes())
+
